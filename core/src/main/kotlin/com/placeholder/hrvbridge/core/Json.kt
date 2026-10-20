@@ -16,6 +16,45 @@ object Json {
         return v
     }
 
+    /** Writes null, Boolean, integral and finite floating Numbers, String, Map<String, *> and Iterable. */
+    fun write(v: Any?): String = StringBuilder().also { write(it, v) }.toString()
+
+    private fun write(b: StringBuilder, v: Any?) {
+        when (v) {
+            null -> b.append("null")
+            is Boolean -> b.append(v)
+            is Int, is Long, is Short, is Byte -> b.append(v)
+            is Double, is Float -> {
+                val d = (v as Number).toDouble()
+                if (!d.isFinite()) throw JsonException("non-finite number $d")
+                b.append(d)
+            }
+            is String -> b.append(quote(v))
+            is Map<*, *> -> {
+                b.append('{')
+                var first = true
+                for ((k, value) in v) {
+                    if (!first) b.append(',')
+                    first = false
+                    b.append(quote(k as? String ?: throw JsonException("non-string key $k"))).append(':')
+                    write(b, value)
+                }
+                b.append('}')
+            }
+            is Iterable<*> -> {
+                b.append('[')
+                var first = true
+                for (item in v) {
+                    if (!first) b.append(',')
+                    first = false
+                    write(b, item)
+                }
+                b.append(']')
+            }
+            else -> throw JsonException("cannot write ${v::class.java.name}")
+        }
+    }
+
     fun quote(s: String): String = buildString {
         append('"')
         for (c in s) {

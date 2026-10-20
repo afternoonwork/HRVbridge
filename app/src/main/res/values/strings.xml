@@ -31,6 +31,24 @@
     <string name="uploading">Uploading…</string>
     <string name="uploaded">Uploaded.</string>
     <string name="upload_failed">Upload failed: %1$s</string>
-    <string name="dry_run_note">Dry run, nothing was sent. Request:</string>
+    <string name="dry_run_note">Dry run (debug build, not connected), nothing was sent. Request:</string>
     <string name="done">Done</string>
+    <string name="upload_not_connected">Not uploaded: connect to Intervals.icu first.</string>
+    <string name="upload_reconnect">Intervals.icu did not accept the stored credentials. Please reconnect.</string>
+    <string name="share_log">Share debug log</string>
+    <string name="share_log_subject">HRV Bridge debug log</string>
+
+    <string name="connection_title">Intervals.icu</string>
+    <string name="connection_none">Not connected.</string>
+    <string name="connection_api_key">Connected with a personal API key.</string>
+    <string name="connection_oauth">Connected as %1$s.</string>
+    <string name="connection_oauth_unnamed">Connected.</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="advanced_api_key">Advanced: paste personal API key</string>
+    <string name="api_key_hint">For testing. You can find your personal API key in your Intervals.icu settings. It is stored encrypted on this device only.</string>
+    <string name="api_key_label">API key</string>
+    <string name="api_key_save">Save key</string>
+    <string name="api_key_blank">Please paste a key first.</string>
+    <string name="keep_values_title">Keep your morning values intact</string>
+    <string name="keep_values_body">This app writes your resting HR and HRV (rMSSD, SDNN) to today\'s wellness record in Intervals.icu. If another service (e.g. Garmin, Oura, Whoop) also sends resting HR or HRV to Intervals.icu, it may overwrite these values. To prevent that, open Intervals.icu settings, and for each connected service untick Resting HR and HRV.</string>
 </resources>

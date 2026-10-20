@@ -22,11 +22,13 @@ Owner: Paul. Repo: mularmularmular/HRVbridge (private). Public release planned
 - Native Kotlin + Jetpack Compose. minSdk 26 (Android 8.0), target/compile SDK 36.
 - Two Gradle modules:
   - `:core`: pure Kotlin/JVM, no Android imports. 0x2A37 parser, artefact
-    filter, RHR/rMSSD/SDNN, Intervals request building (JSON, URLs, PKCE
-    helpers). Every change needs a unit test.
+    filter, RHR/rMSSD/SDNN, measurement session, Intervals request building
+    (JSON, URLs, PKCE helpers), the HTTP client (`IntervalsClient` on
+    `HttpURLConnection`, JDK only, tested against `com.sun.net.httpserver`),
+    session JSON store, debug log, AES-GCM sealing. Every change needs a
+    unit test.
   - `:app`: Compose UI, BLE (plain `BluetoothGatt`, no BLE library), OAuth via
-    browser/Custom Tab, token storage, HTTP (`HttpURLConnection`, no OkHttp
-    unless needed).
+    browser/Custom Tab, Keystore key and credential storage, threading.
 - Keep dependencies minimal. Prefer platform APIs.
 - iOS app built in parallel (see "iOS (parallel track)"): SwiftUI +
   CoreBluetooth, sharing `core/src/test/resources/test-vectors.json` as the
@@ -103,6 +105,11 @@ Formulas (NN = accepted RR in ms):
 Store each session's raw RR array locally (JSON) for recomputation and support.
 Provide a "share debug log" button (BLE events, parsed packets, results; never
 tokens).
+- Done: `filesDir/sessions/session-<UTC start>.json` (`SessionRecord`, raw RR
+  unrounded, accept/reject per beat, config, result, `uploadedAt`). Share
+  sends the in-memory log of the last session plus its JSON as plain text.
+  Credentials are never logged, and `DebugLog` also redacts registered
+  secrets (key, token, Basic header value) on export.
 
 ## Intervals.icu integration (verified 20 Oct 2026 against live OpenAPI spec)
 
@@ -142,6 +149,14 @@ Auth:
 - Store token encrypted: AES-GCM key in Android Keystore, ciphertext in
   SharedPreferences/DataStore. Exclude from auto-backup. Do NOT use
   androidx.security-crypto (deprecated).
+  - Done: `CredentialStore` (prefs file `auth`, excluded in both backup
+    rule files), Keystore alias `hrvbridge_credential`. Undecryptable data
+    is cleared and treated as "not connected". The Keystore path itself is
+    untested (Robolectric has no AndroidKeyStore); verify on a device.
+  - "Advanced: paste personal API key" on the main screen stores an
+    `ApiKey` credential. Without a credential, debug builds dry-run the
+    upload; release builds report "not connected".
+- No live Intervals.icu calls from cloud sessions. Tests use local servers.
 
 Overwrite handling (decided): no locking. On the connect screen, tell users
 that other services (Garmin, Oura, Whoop...) syncing resting HR/HRV to
@@ -166,6 +181,8 @@ Draft connect-screen copy:
 - Runtime: Nearby devices on 12+, location on 11 and lower.
 - Scan filtered by service UUID 0x180D; remember last device; auto-connect.
 - Retry failed uploads on next app open (WorkManager only if really needed).
+  `SessionStore.pendingUploads()` lists reliable, never-uploaded sessions;
+  the retry itself is not wired up yet.
 
 ## Later destinations (not now)
 

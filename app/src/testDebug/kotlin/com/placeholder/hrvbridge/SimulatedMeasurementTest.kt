@@ -21,8 +21,10 @@ import java.time.LocalDate
 class SimulatedMeasurementTest {
     private val context = RuntimeEnvironment.getApplication()
 
+    private val sessionsDir = java.nio.file.Files.createTempDirectory("sessions").toFile()
+
     private fun run(scenario: String, speed: Int, realSeconds: Long): MeasurementController {
-        val c = MeasurementController()
+        val c = testController(context, sessionsDir)
         c.start(DebugStrap.create(context, scenario, speed))
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(realSeconds))
         return c
@@ -35,7 +37,9 @@ class SimulatedMeasurementTest {
         val done = c.session as SessionState.Finished
         assertTrue(done.result!!.reliable)
         assertEquals(60, done.result!!.restingHr)
+        // No credential in a debug build: dry run.
         val upload = (c.upload as UploadStatus.Done).result as UploadResult.Success
+        assertTrue(upload.dryRun)
         assertTrue(upload.detail, upload.detail.contains("/wellness/${LocalDate.now()}"))
         assertTrue(upload.detail, upload.detail.contains("\"restingHR\":60"))
     }
@@ -72,7 +76,7 @@ class SimulatedMeasurementTest {
 
     @Test
     fun poorContactDelaysTheClock() {
-        val c = MeasurementController()
+        val c = testController(context)
         c.start(DebugStrap.create(context, "Poor contact for the first 15 s", 10))
         val looper = shadowOf(Looper.getMainLooper())
         looper.idleFor(Duration.ofMillis(1_200)) // 12 s virtual
@@ -83,12 +87,40 @@ class SimulatedMeasurementTest {
 
     @Test
     fun backgroundingCancels() {
-        val c = MeasurementController()
+        val c = testController(context)
         c.start(DebugStrap.create(context, "Vector: clean 70 beats", 10))
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
         c.onBackgrounded()
         assertEquals(null, c.session)
         assertTrue(c.cancelledInBackground)
+    }
+
+    @Test
+    fun finishedSessionIsStoredWithRawRr() {
+        val c = run("Vector: clean 70 beats", speed = 60, realSeconds = 3)
+        val done = c.session as SessionState.Finished
+        val stored = com.placeholder.hrvbridge.core.SessionStore(sessionsDir).list().single()
+        assertEquals(done.rrMs, stored.series.rrMs)
+        assertEquals(done.result, stored.result)
+        assertEquals(LocalDate.now(), stored.date)
+        // Dry run is not an upload.
+        assertEquals(null, stored.uploadedAt)
+    }
+
+    @Test
+    fun debugLogHasSourcePacketsPhasesAndResult() {
+        val c = run("Vector: clean 70 beats", speed = 60, realSeconds = 3)
+        val text = c.shareText()
+        for (needle in listOf("SOURCE Simulated strap: Vector: clean 70 beats at 60x", "RX t=1000 16 ", "PHASE Stabilising",
+            "PHASE Measuring", "PHASE Finished", "RESULT HrvResult(", "UPLOAD Success", "Session JSON:", "\"rrMs\":[")) {
+            assertTrue("missing '$needle'", text.contains(needle))
+        }
+    }
+
+    @Test
+    fun failedSessionLogsDisconnect() {
+        val c = run("Strap disconnects after 30 s", speed = 60, realSeconds = 1)
+        assertTrue(c.shareText().contains("SOURCE disconnected"))
     }
 
     @Test

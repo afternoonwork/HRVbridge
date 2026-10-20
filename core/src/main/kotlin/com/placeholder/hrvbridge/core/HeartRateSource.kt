@@ -6,6 +6,9 @@ package com.placeholder.hrvbridge.core
  * everything downstream (parser, filter, session timer, UI, upload) is the same.
  */
 interface HeartRateSource {
+    /** For the debug log, e.g. device name and address, or the simulated scenario. */
+    val description: String
+
     /** Monotonic clock (ms) that packet timestamps and session ticks use. */
     fun nowMs(): Long
 
