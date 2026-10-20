@@ -61,3 +61,28 @@ allprojects {
 GRADLE
 
 echo "Android SDK installed at $ANDROID_HOME"
+
+# Swift toolchain for the ios/HRVCore tests on Linux (Swift 6.2.x, like Xcode 26.x).
+# Needs download.swift.org allowed. If it is blocked, fall back to the official
+# swift Docker image (Docker Hub is reachable by default); scripts/swift-test.sh
+# uses whichever is available.
+SWIFT_VERSION=6.2.4
+SWIFT_HOME="$HOME/swift-$SWIFT_VERSION"
+if [ ! -x "$SWIFT_HOME/usr/bin/swift" ]; then
+  SWIFT_URL="https://download.swift.org/swift-$SWIFT_VERSION-release/ubuntu2404/swift-$SWIFT_VERSION-RELEASE/swift-$SWIFT_VERSION-RELEASE-ubuntu24.04.tar.gz"
+  if curl -fsSL -o /tmp/swift.tar.gz "$SWIFT_URL"; then
+    apt-get install -y -qq binutils libc6-dev libcurl4-openssl-dev libedit2 libgcc-13-dev libncurses-dev \
+      libpython3-dev libsqlite3-0 libstdc++-13-dev libxml2-dev libz3-dev pkg-config tzdata zlib1g-dev > /dev/null || true
+    mkdir -p "$SWIFT_HOME"
+    tar -xzf /tmp/swift.tar.gz --strip-components=1 -C "$SWIFT_HOME"
+    rm /tmp/swift.tar.gz
+    echo "export PATH=$SWIFT_HOME/usr/bin:\$PATH" >> "$HOME/.bashrc"
+    echo "Swift $SWIFT_VERSION installed at $SWIFT_HOME"
+  elif command -v docker > /dev/null; then
+    echo "download.swift.org not reachable; using Docker image swift:6.2-noble instead"
+    if ! docker info > /dev/null 2>&1; then (dockerd > /tmp/dockerd.log 2>&1 &); sleep 5; fi
+    docker pull -q swift:6.2-noble > /dev/null || echo "docker pull swift:6.2-noble failed"
+  else
+    echo "No Swift toolchain: allow download.swift.org for this environment"
+  fi
+fi
