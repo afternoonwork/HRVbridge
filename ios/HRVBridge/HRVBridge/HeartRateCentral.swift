@@ -3,10 +3,36 @@ import Foundation
 import HRVCore
 import Observation
 
-/// Monotonic milliseconds for packet timestamps and the session clock.
+/// Monotonic milliseconds for packet timestamps and the session clock. Debug builds can
+/// run it faster for the simulated strap; it is always 1x with a real strap.
 enum Clock {
+    nonisolated private static let lock = NSLock()
+    nonisolated(unsafe) private static var speed = 1.0
+    nonisolated(unsafe) private static var realBase: Int64 = 0
+    nonisolated(unsafe) private static var virtualBase: Int64 = 0
+
     nonisolated static func nowMs() -> Int64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return unlockedNow()
+    }
+
+    /// Continues from the current time at the new speed (monotonic across changes).
+    nonisolated static func setSpeed(_ newSpeed: Double) {
+        lock.lock()
+        defer { lock.unlock() }
+        let now = unlockedNow()
+        virtualBase = now
+        realBase = realMs()
+        speed = newSpeed
+    }
+
+    nonisolated private static func realMs() -> Int64 {
         Int64(ProcessInfo.processInfo.systemUptime * 1000)
+    }
+
+    nonisolated private static func unlockedNow() -> Int64 {
+        virtualBase + Int64(Double(realMs() - realBase) * speed)
     }
 }
 
@@ -48,6 +74,7 @@ final class HeartRateCentral: NSObject {
     @ObservationIgnored private var peripherals: [UUID: CBPeripheral] = [:]
     @ObservationIgnored private var current: CBPeripheral?
     @ObservationIgnored private var wantsScan = false
+    @ObservationIgnored private var simulation: Task<Void, Never>?
 
     private static let heartRateService = CBUUID(string: "180D")
     private static let heartRateMeasurement = CBUUID(string: "2A37")
@@ -86,10 +113,50 @@ final class HeartRateCentral: NSObject {
     }
 
     func disconnect() {
+        if simulation != nil { return stopSimulation() }
         wantsScan = false
         manager?.stopScan()
         if let p = current { manager?.cancelPeripheralConnection(p) }
         log.add("BLE", "disconnect requested")
+    }
+
+    #if DEBUG
+    /// Debug builds only: replays synthetic packets through the same path as real
+    /// notifications (parser, live view, recorder, measurement). `speed` > 1 fast-forwards
+    /// the shared clock, so the session timer runs faster too.
+    func startSimulation(_ scenario: SimulatorScenario, speed: Double) {
+        manager?.stopScan()
+        wantsScan = false
+        Clock.setSpeed(speed)
+        let name = "Simulated strap"
+        connectedName = name
+        connectedId = nil
+        status = .connected(name)
+        log.add("SIM", "start \(scenario.title) at \(Int(speed))x")
+        onConnected?()
+        let packets = scenario.packets()
+        let start = Clock.nowMs()
+        simulation = Task { [weak self] in
+            for p in packets {
+                let due = start + p.timeMs
+                let waitMs = Double(due - Clock.nowMs()) / speed
+                if waitMs > 0 { try? await Task.sleep(for: .milliseconds(Int(waitMs))) }
+                if Task.isCancelled { return }
+                self?.value(p.bytes, at: due)
+            }
+            self?.log.add("SIM", "out of data")
+        }
+    }
+    #endif
+
+    private func stopSimulation() {
+        simulation?.cancel()
+        simulation = nil
+        Clock.setSpeed(1)
+        connectedName = nil
+        status = .disconnected("simulation stopped")
+        log.add("SIM", "stopped")
+        onDisconnected?()
     }
 
     private func beginScanIfReady() {

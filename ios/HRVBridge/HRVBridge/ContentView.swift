@@ -216,6 +216,7 @@ private struct StrapSection: View {
             case .idle:
                 Text("Put the strap on and moisten the electrodes. Close Polar Flow and other apps that may be connected to it.")
                 Button("Find strap") { central.startScan() }
+                SimulatorControls(central: central)
             case let .bluetoothUnavailable(message):
                 Text(message)
                 Button("Try again") { central.startScan() }
@@ -242,8 +243,33 @@ private struct StrapSection: View {
             case let .disconnected(reason):
                 Text("Not connected (\(reason)).")
                 Button("Find strap") { central.startScan() }
+                SimulatorControls(central: central)
             }
         }
+    }
+}
+
+/// Debug builds only: replay synthetic data instead of a real strap.
+private struct SimulatorControls: View {
+    let central: HeartRateCentral
+    @State private var scenario = SimulatorScenario.calm
+    @State private var speed = 10
+
+    var body: some View {
+        #if DEBUG
+        DisclosureGroup("Simulated strap (debug builds only)") {
+            Picker("Scenario", selection: $scenario) {
+                ForEach(SimulatorScenario.allCases) { Text($0.title).tag($0) }
+            }
+            Picker("Speed", selection: $speed) {
+                ForEach([1, 10, 60], id: \.self) { Text("\($0)x").tag($0) }
+            }
+            .pickerStyle(.segmented)
+            Button("Start simulated strap") { central.startSimulation(scenario, speed: Double(speed)) }
+        }
+        #else
+        EmptyView()
+        #endif
     }
 }
 
