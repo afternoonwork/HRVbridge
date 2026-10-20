@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
@@ -82,6 +83,15 @@ private fun failText(reason: FailReason) = when (reason) {
 @Composable
 private fun IdleContent(controller: MeasurementController) {
     if (controller.cancelledInBackground) Text(stringResource(R.string.cancelled_in_background))
+    when (val r = controller.retry) {
+        RetryStatus.None -> Unit
+        RetryStatus.InProgress -> Text(stringResource(R.string.retry_in_progress))
+        is RetryStatus.Uploaded -> Text(pluralStringResource(R.plurals.retry_uploaded, r.count, r.count))
+        is RetryStatus.Failed -> Text(
+            stringResource(if (r.reconnect) R.string.upload_reconnect else R.string.retry_failed),
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
     if (!DebugStrap.AVAILABLE) {
         Text(stringResource(R.string.no_strap_yet))
         return

@@ -78,6 +78,35 @@ class SessionStoreTest {
     }
 
     @Test
+    fun retryBatchTakesNewestPendingSessionPerDate() {
+        store.save(record("2026-10-18T05:30:00Z"))
+        store.save(record("2026-10-19T05:30:00Z"))
+        store.save(record("2026-10-19T06:10:00Z")) // repeat on the same morning wins
+        assertEquals(
+            listOf("2026-10-19T06:10:00Z", "2026-10-18T05:30:00Z"),
+            store.retryBatch().map { it.startedAt.toString() },
+        )
+    }
+
+    @Test
+    fun retryBatchNeverOverwritesANewerUploadedValue() {
+        store.save(record("2026-10-19T05:30:00Z"))
+        store.save(record("2026-10-19T06:10:00Z", uploadedAt = Instant.parse("2026-10-19T06:13:00Z")))
+        assertEquals(emptyList(), store.retryBatch())
+    }
+
+    @Test
+    fun retryBatchSkipsNewestIfItIsNotUploadable() {
+        // Newest of the day is unreliable without override: nothing for that day,
+        // and the older reliable one must not overwrite what the user saw last.
+        store.save(record("2026-10-19T05:30:00Z"))
+        val series = ArtefactFilter.filter(listOf(1000.0, 1010.0, 990.0))
+        store.save(SessionRecord(Instant.parse("2026-10-19T06:10:00Z"), LocalDate.parse("2026-10-19"), SessionConfig(),
+            series, HrvMetrics.compute(series), 0, null))
+        assertEquals(emptyList(), store.retryBatch())
+    }
+
+    @Test
     fun createsDirectoryOnDemand() {
         val nested = SessionStore(dir.resolve("a/b"))
         nested.save(record("2026-10-20T05:30:00Z"))
