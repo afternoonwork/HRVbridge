@@ -32,8 +32,9 @@ jobs:
       - name: Select Xcode
         run: |
           ls -d /Applications/Xcode*.app || true
-          XCODE=/Applications/Xcode_26.3.app
-          if [ ! -d "$XCODE" ]; then
+          # Image folders are named like Xcode_26.3.0.app.
+          XCODE=$(ls -d /Applications/Xcode_26.3*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE" ]; then
             XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
           fi
           if [ -n "$XCODE" ] && [ -d "$XCODE" ]; then sudo xcode-select -s "$XCODE"; fi
