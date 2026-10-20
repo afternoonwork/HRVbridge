@@ -1,6 +1,5 @@
 package com.placeholder.hrvbridge.core
 
-import kotlin.math.floor
 import kotlin.math.sqrt
 
 data class QualityGate(
@@ -52,7 +51,7 @@ object HrvMetrics {
         val removed = rr.size - nn.size
         return HrvResult(
             meanNnMs = mean,
-            restingHr = floor(60000.0 / mean + 0.5).toInt(),
+            restingHr = Rounding.halfUpToInt(60000.0 / mean),
             rmssdMs = sqrt(sumSq / pairs),
             sdnnMs = sqrt(ss / (nn.size - 1)),
             acceptedBeats = nn.size,
@@ -62,6 +61,6 @@ object HrvMetrics {
         )
     }
 
-    /** Half-up rounding to one decimal place. */
-    fun round1(x: Double): Double = floor(x * 10.0 + 0.5) / 10.0
+    /** One decimal place, see [Rounding]. */
+    fun round1(x: Double): Double = Rounding.halfUp(x, 1)
 }

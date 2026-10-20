@@ -46,7 +46,10 @@ class IntervalsOAuthTest {
         // Users can deselect scopes on the consent screen.
         assertFalse(IntervalsOAuth.parseTokenResponse("""{"access_token":"a","scope":"ACTIVITY:READ"}""").canWriteWellness)
         assertFalse(IntervalsOAuth.parseTokenResponse("""{"access_token":"a"}""").canWriteWellness)
-        // Scope list separator is not documented; accept comma or whitespace.
+        // Example response in the Intervals.icu OAuth forum post uses a comma.
+        assertTrue(IntervalsOAuth.parseTokenResponse("""{"access_token":"a","scope":"ACTIVITY:WRITE,WELLNESS:WRITE"}""").canWriteWellness)
+        assertFalse(IntervalsOAuth.parseTokenResponse("""{"access_token":"a","scope":"ACTIVITY:WRITE,WELLNESS:READ"}""").canWriteWellness)
+        // Separator is not formally documented; whitespace is accepted too.
         assertTrue(IntervalsOAuth.parseTokenResponse("""{"access_token":"a","scope":"ACTIVITY:READ,WELLNESS:WRITE"}""").canWriteWellness)
         assertTrue(IntervalsOAuth.parseTokenResponse("""{"access_token":"a","scope":"ACTIVITY:READ WELLNESS:WRITE"}""").canWriteWellness)
         assertFalse(IntervalsOAuth.parseTokenResponse("""{"access_token":"a","scope":"WELLNESS:WRITEX"}""").canWriteWellness)

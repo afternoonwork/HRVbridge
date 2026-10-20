@@ -3,6 +3,7 @@ package com.placeholder.hrvbridge.core
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -69,9 +70,28 @@ class HrvMetricsTest {
     }
 
     @Test
-    fun roundsHalfUp() {
-        assertEquals(68.5, HrvMetrics.round1(68.45000001))
-        assertEquals(68.4, HrvMetrics.round1(68.44999))
-        assertEquals(0.0, HrvMetrics.round1(0.0))
+    fun roundingMatchesSharedTestVectors() {
+        @Suppress("UNCHECKED_CAST")
+        val cases = TestVectors.root["rounding"] as List<Map<String, Any?>>
+        assertTrue(cases.isNotEmpty())
+        for (c in cases) {
+            val x = (c["value"] as Number).toDouble()
+            val d = (c["decimals"] as Number).toInt()
+            assertEquals((c["expected"] as Number).toDouble(), Rounding.halfUp(x, d), "$x to $d decimals")
+        }
+    }
+
+    @Test
+    fun roundsDecimalTiesUpDespiteBinaryRepresentation() {
+        // 1.15 is stored as 1.1499999999999999...; plain BigDecimal(1.15) would round down.
+        assertEquals(1.2, HrvMetrics.round1(1.15))
+        assertEquals(68.5, HrvMetrics.round1(68.45))
+        assertEquals(73, Rounding.halfUpToInt(72.5))
+    }
+
+    @Test
+    fun roundingRejectsNegativeAndNaN() {
+        assertFailsWith<IllegalArgumentException> { Rounding.halfUp(-0.1, 1) }
+        assertFailsWith<IllegalArgumentException> { Rounding.halfUp(Double.NaN, 1) }
     }
 }
