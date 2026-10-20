@@ -51,6 +51,13 @@ beforeSettings {
     pluginManagement.repositories { maven(mirror) }
     dependencyResolutionManagement.repositories { maven(mirror) }
 }
+
+// Robolectric fetches android-all jars itself at test time.
+allprojects {
+    tasks.withType<Test>().configureEach {
+        systemProperty("robolectric.dependency.repo.url", "https://maven-central.storage-download.googleapis.com/maven2/")
+    }
+}
 GRADLE
 
 echo "Android SDK installed at $ANDROID_HOME"

@@ -34,6 +34,25 @@ class SignalCheckTest {
     }
 
     @Test
+    fun singleArtefactInWindowIsTolerated() {
+        // One dropout beat (and the HR spike it causes) must not refuse the session.
+        val list = List(4) { m(60, listOf(1000.0)) } + m(96, listOf(250.0, 1000.0)) + List(4) { m(60, listOf(1000.0)) }
+        assertEquals(SignalStatus.OK, SignalCheck.evaluate(list))
+    }
+
+    @Test
+    fun vectorWithEarlyArtefactPassesCheck() {
+        val rr = TestVectors.doubles(TestVectors.series.first { it["name"] == "more than 5 percent removed" }["rrMs"])
+        val window = SimulatedStream.fromRr(rr).filter { it.timeMs < 10_000 }.map { HeartRateParser.parse(it.bytes)!! }
+        assertEquals(SignalStatus.OK, SignalCheck.evaluate(window))
+    }
+
+    @Test
+    fun implausibleWhenNoRrSurvivesFiltering() {
+        assertEquals(SignalStatus.IMPLAUSIBLE, SignalCheck.evaluate(List(10) { m(60, listOf(250.0)) }))
+    }
+
+    @Test
     fun implausibleWhenRrDoesNotMatchHeartRate() {
         assertEquals(SignalStatus.IMPLAUSIBLE, SignalCheck.evaluate(List(10) { m(60, listOf(1101.0)) }))
         assertEquals(SignalStatus.IMPLAUSIBLE, SignalCheck.evaluate(List(10) { m(0, listOf(1000.0)) }))

@@ -16,6 +16,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Core unit tests
         run: ./gradlew :core:test
+      - name: App unit tests (Robolectric, simulated strap)
+        run: ./gradlew :app:testDebugUnitTest
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug
       - uses: actions/upload-artifact@v4
@@ -26,4 +28,6 @@ jobs:
         if: failure()
         with:
           name: core-test-reports
-          path: core/build/reports/tests/
+          path: |
+            core/build/reports/tests/
+            app/build/reports/tests/

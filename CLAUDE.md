@@ -35,7 +35,9 @@ Owner: Paul. Repo: mularmularmular/HRVbridge (private). Public release planned
   the JSON by hand; extend the script and regenerate).
 - Versions verified working on 20 Oct 2026: JDK 21, Gradle 9.8.2, AGP 9.4.1
   (built-in Kotlin), Kotlin 2.4.21, Compose BOM 2026.06.01 (Compose 1.11.4),
-  activity-compose 1.13.0, JUnit 5.13.4.
+  activity-compose 1.13.0, JUnit 5.13.4 (core), JUnit 4.13.2 + Robolectric
+  4.17 (app tests only; needs `--add-exports java.base/jdk.internal.access`
+  on JDK 21, set in `app/build.gradle.kts`).
 - Compose BOM is pinned to 2026.06.01 because 2026.08.00+ requires
   compileSdk 37; revisit only when Play requires targetSdk 37 or a
   dependency forces it.
@@ -68,6 +70,9 @@ Owner: Paul. Repo: mularmularmular/HRVbridge (private). Public release planned
 - No device whitelist. Runtime detection: if no notification with bit4 within
   ~10 s, refuse HRV ("this sensor does not send beat-to-beat data").
   Plausibility: mean RR over 10 s should match 60000/HR within ~10%.
+  Implemented robustly (decided 20 Oct 2026): mean of artefact-filtered RR vs
+  60000 / median reported HR, so one ectopic beat or dropout in the window
+  does not refuse the session.
 - Intended sensors include Polar H10/H9/H7, Garmin HRM Dual/Pro, 4iiii Viiiiva,
   Suunto Smart Belt, Wahoo etc. Garmin RR over BLE is reportedly inconsistent:
   runtime detection handles it.
@@ -177,6 +182,12 @@ Draft connect-screen copy:
   physical device is available: keep `:core` fully unit-tested with synthetic
   and recorded byte streams, and make the app runnable with a "simulated strap"
   debug mode that replays test vectors through the same pipeline.
+- Simulated strap (Android, done): `app/src/debug/.../DebugStrap.kt` replays
+  `test-vectors.json` (packaged as debug assets) as 1 Hz 0x2A37 packets via
+  the `HeartRateSource` interface the BLE code will implement. Speeds 1x,
+  10x, 60x. Release builds get a stub (`app/src/release`). Upload is a dry
+  run (builds the request, sends nothing) until auth and HTTP exist.
+  Robolectric tests in `app/src/testDebug` drive it end to end.
 - Real-strap testing happens first on iOS (iPhone SE 2020). Record raw 0x2A37
   notification bytes from the H9 there and commit them as test vectors, so the
   Android pipeline is tested against real data too.
@@ -208,8 +219,9 @@ Draft connect-screen copy:
   SDK; needs `dl.google.com` allowed in addition to the Trusted defaults).
   It also adds a Gradle init script that prefers Google's Maven Central
   mirror, because Maven Central rate-limits (429) the cloud egress IP.
-- Commands: `./gradlew :core:test`, `./gradlew :app:assembleDebug`, `./gradlew lint`.
-- GitHub Actions: on every push run `:core:test` and `assembleDebug`, upload
+- Commands: `./gradlew :core:test`, `./gradlew :app:testDebugUnitTest`,
+  `./gradlew :app:assembleDebug`, `./gradlew lint`.
+- GitHub Actions: on every push run `:core:test`, `:app:testDebugUnitTest` and `assembleDebug`, upload
   the debug APK as an artifact.
 
 ## Open questions

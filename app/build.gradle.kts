@@ -30,6 +30,20 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        // Robolectric tests read the debug assets (test vectors).
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            // Robolectric on JDK 17+ with SDK 36 reads FileDescriptor internals.
+            it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED")
+        }
+    }
+
+    sourceSets {
+        // The simulated strap replays the shared test vectors (debug builds only).
+        getByName("debug").assets.directories.add("../core/src/test/resources")
+    }
 }
 
 dependencies {
@@ -40,4 +54,6 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.activity.compose)
     debugImplementation(libs.compose.ui.tooling)
+    testImplementation(libs.junit4)
+    testImplementation(libs.robolectric)
 }
