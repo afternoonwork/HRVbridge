@@ -60,6 +60,17 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(store.list().count, 6)
     }
 
+    func testDeleteAllRemovesOnlySessionFiles() throws {
+        let store = SessionStore(directory: dir)
+        try store.save(record("2026-10-19T05:30:00Z"))
+        try store.save(record("2026-10-20T05:30:00Z"))
+        try Data("keep".utf8).write(to: dir.appendingPathComponent("other.txt"))
+        XCTAssertEqual(store.deleteAll(), 2)
+        XCTAssertEqual(store.list().count, 0)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path), ["other.txt"])
+        XCTAssertEqual(SessionStore(directory: dir.appendingPathComponent("missing")).deleteAll(), 0)
+    }
+
     func testRawRecordingJson() throws {
         var rec = RawRecording(startedAt: Date(timeIntervalSince1970: 1_792_474_200), deviceName: "Polar H9 ABCD", deviceId: "UUID-1")
         rec.add(bytes: [0x16, 60, 0x00, 0x04], timeMs: 1_000)

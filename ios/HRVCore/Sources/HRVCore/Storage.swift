@@ -179,6 +179,15 @@ public struct SessionStore: Sendable {
         try record.jsonData().write(to: directory.appendingPathComponent(record.fileName), options: .atomic)
     }
 
+    /// "Delete all measurements": removes every session file. Returns how many were deleted.
+    @discardableResult
+    public func deleteAll() -> Int {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        return names.filter { $0.hasPrefix("session-") && $0.hasSuffix(".json") }
+            .filter { (try? FileManager.default.removeItem(at: directory.appendingPathComponent($0))) != nil }
+            .count
+    }
+
     /// Newest first; unreadable files are skipped.
     public func list() -> [SessionRecord] {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []

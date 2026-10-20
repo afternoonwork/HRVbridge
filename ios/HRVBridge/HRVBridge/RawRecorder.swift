@@ -47,6 +47,18 @@ final class RawRecorder {
         finish()
     }
 
+    /// Deletes saved raw recordings (temporary files waiting to be shared).
+    func deleteFiles() {
+        guard !isRecording else { return }
+        let dir = FileManager.default.temporaryDirectory
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
+        for n in names where n.hasPrefix("hrvbridge-raw-") {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(n))
+        }
+        fileURL = nil
+        packetCount = 0
+    }
+
     private func tick() {
         guard isRecording else { return }
         elapsedMs = Clock.nowMs() - startMs

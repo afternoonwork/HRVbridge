@@ -18,6 +18,7 @@ struct ContentView: View {
                 if model.measurement.apiKey != nil {
                     IntervalsSection(measurement: model.measurement)
                 }
+                DeleteSection(model: model)
                 if model.central.isConnected {
                     LiveSection(central: model.central)
                     RecorderSection(model: model)
@@ -70,6 +71,15 @@ final class AppModel {
         log.add("REC", "raw recording finished, \(recorder.packetCount) packets")
     }
 
+    /// "Delete all measurements": session files, raw recordings and the debug log.
+    /// The API key and Intervals.icu data are not touched.
+    func deleteAllMeasurements() -> Bool {
+        guard measurement.deleteAllMeasurements() else { return false }
+        recorder.deleteFiles()
+        log.clear()
+        return true
+    }
+
     /// Debug log plus the last session's JSON. Secrets are redacted by DebugLog.
     func shareText() -> String {
         var text = log.text()
@@ -112,6 +122,28 @@ private struct IntervalsSection: View {
                 Text("This app writes your resting HR and HRV (rMSSD, SDNN) to today's wellness record in Intervals.icu. If another service (e.g. Garmin, Oura, Whoop) also sends resting HR or HRV to Intervals.icu, it may overwrite these values. To prevent that, open Intervals.icu settings, and for each connected service untick Resting HR and HRV.")
                     .font(.footnote)
             }
+        }
+    }
+}
+
+private struct DeleteSection: View {
+    let model: AppModel
+    @State private var confirming = false
+    @State private var message: String?
+
+    var body: some View {
+        Section {
+            Button("Delete all measurements", role: .destructive) { confirming = true }
+                .confirmationDialog("Delete all measurements?", isPresented: $confirming, titleVisibility: .visible) {
+                    Button("Delete", role: .destructive) {
+                        message = model.deleteAllMeasurements()
+                            ? "All measurements on this phone were deleted."
+                            : "Finish or cancel the running measurement first."
+                    }
+                } message: {
+                    Text("This deletes every measurement and raw recording stored on this phone and the debug log. Your API key stays saved, and nothing is deleted in Intervals.icu. Measurements not yet uploaded will be lost.")
+                }
+            if let message { Text(message).font(.footnote) }
         }
     }
 }
