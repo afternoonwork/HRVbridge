@@ -15,6 +15,9 @@ Owner: Paul. Repo: mularmularmular/HRVbridge (private). Public release planned
 - Name and package ID are placeholders: app name "HRV Bridge", package
   `com.placeholder.hrvbridge`. Must be replaced before the first Play upload
   (the package ID is permanent on Google Play).
+- iOS: bundle ID `PM.HRVBridge` and development team `3AD9GLQSQH` (Paul's
+  free Personal Team) are Paul's local placeholders from creating the Xcode
+  project. Replace both with the final IDs before TestFlight / App Store.
 - No `locked: true` on wellness writes (decided against, see Intervals section).
 
 ## Stack (decided)
