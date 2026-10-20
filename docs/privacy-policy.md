@@ -67,8 +67,12 @@ only with the recipient you choose. It never contains your API key.
 
 - **API key**: tap "Disconnect" in the app. This removes the key from your
   phone. You can also revoke or regenerate the key in Intervals.icu.
-- **Measurements on your phone**: uninstalling the app deletes all of them.
-  [An in-app "delete all measurements" option is planned.]
+- **Measurements on your phone**: tap "Delete all measurements" in the app
+  and confirm. This deletes every stored measurement (raw RR intervals and
+  results, and on iPhone any saved raw recordings) and the debug log. Your
+  API key stays saved, and nothing is deleted in Intervals.icu.
+  Measurements not yet uploaded are lost. Uninstalling the app also
+  deletes all of them.
 - **Values in Intervals.icu**: delete them in Intervals.icu.
 
 ## Not a medical device
