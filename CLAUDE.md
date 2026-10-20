@@ -1,0 +1,166 @@
+# HRV Bridge (working title, placeholder)
+
+A deliberately minimal Android app (iOS later) that records a 1-minute morning
+measurement from a Bluetooth chest strap and writes resting HR, rMSSD and SDNN
+to the user's Intervals.icu wellness record. It is a bridge, not an analysis
+tool: no charts, trends, baselines or readiness scores. Intervals.icu does that.
+
+Owner: Paul. Repo: mularmularmular/HRVbridge (private). Public release planned
+(Google Play first, App Store later), free, donation link outside the app.
+
+## Hard scope rules
+
+- One measurement per day, one upload. No backend, no analytics, no tracking.
+- UI strings: British English. Never use em dashes or "--" in UI text or docs.
+- Name and package ID are placeholders: app name "HRV Bridge", package
+  `com.placeholder.hrvbridge`. Must be replaced before the first Play upload
+  (the package ID is permanent on Google Play).
+- No `locked: true` on wellness writes (decided against, see Intervals section).
+
+## Stack (decided)
+
+- Native Kotlin + Jetpack Compose. minSdk 26 (Android 8.0), target/compile SDK 36.
+- Two Gradle modules:
+  - `:core`: pure Kotlin/JVM, no Android imports. 0x2A37 parser, artefact
+    filter, RHR/rMSSD/SDNN, Intervals request building (JSON, URLs, PKCE
+    helpers). Every change needs a unit test.
+  - `:app`: Compose UI, BLE (plain `BluetoothGatt`, no BLE library), OAuth via
+    browser/Custom Tab, token storage, HTTP (`HttpURLConnection`, no OkHttp
+    unless needed).
+- Keep dependencies minimal. Prefer platform APIs.
+- Later iOS port: SwiftUI + CoreBluetooth, sharing `core/src/test/resources/test-vectors.json`
+  as the contract both test suites must pass.
+
+## Sensors
+
+- Standard Heart Rate Service 0x180D, Heart Rate Measurement 0x2A37 (notify).
+- Flags byte: bit0 HR format (0=UINT8, 1=UINT16); bit1 contact detected;
+  bit2 contact feature supported; bit3 Energy Expended present (+2 bytes);
+  bit4 RR intervals present.
+- RR values: UINT16 little-endian, unit 1/1024 s, oldest first. Convert with
+  `rr_ms = raw * 1000.0 / 1024.0`, keep doubles, never round before maths.
+- A notification may carry 0, 1, 2 or more RR values. Odd trailing byte =
+  malformed, drop it.
+- If bit2 set and bit1 clear: poor contact, tell user to moisten electrodes,
+  do not start the clock.
+- No device whitelist. Runtime detection: if no notification with bit4 within
+  ~10 s, refuse HRV ("this sensor does not send beat-to-beat data").
+  Plausibility: mean RR over 10 s should match 60000/HR within ~10%.
+- Intended sensors include Polar H10/H9/H7, Garmin HRM Dual/Pro, 4iiii Viiiiva,
+  Suunto Smart Belt, Wahoo etc. Garmin RR over BLE is reportedly inconsistent:
+  runtime detection handles it.
+
+## Measurement protocol and maths
+
+1. Connect, confirm RR present and good contact.
+2. Stabilisation: 60 s default (configurable 0/30/60/90 s), data discarded.
+3. Measurement: 60 s wall-clock, collect all RR.
+4. Keep screen on (`FLAG_KEEP_SCREEN_ON`), foreground only. No background BLE.
+
+Artefact handling (defaults, documented in-app):
+- Range: drop RR < 300 ms or > 2000 ms.
+- Relative: drop RR differing > 20% from median of previous 5 accepted RR.
+- rMSSD uses only successive differences where both beats were accepted.
+- Quality gate: > 5% removed or < 40 valid beats -> "Measurement unreliable,
+  please repeat", no upload unless user overrides.
+
+Formulas (NN = accepted RR in ms):
+- RHR = round(60000 / mean(NN)) bpm (integer, Intervals stores int).
+- rMSSD = sqrt(mean((NN[i+1] - NN[i])^2)) over valid pairs, 1 decimal.
+- SDNN = sample SD (n-1) of NN, 1 decimal. Note: 60 s SDNN is a weak metric;
+  literature supports 1-min rMSSD (Esco & Flatt 2014; Flatt & Esco 2016).
+
+Store each session's raw RR array locally (JSON) for recomputation and support.
+Provide a "share debug log" button (BLE events, parsed packets, results; never
+tokens).
+
+## Intervals.icu integration (verified 20 Oct 2026 against live OpenAPI spec)
+
+Docs: https://intervals.icu/api-docs.html (spec served at /api/v1/docs),
+OAuth: https://forum.intervals.icu/t/intervals-icu-oauth-support/2759,
+Cookbook: https://forum.intervals.icu/t/intervals-icu-api-integration-cookbook/80090,
+Terms: https://forum.intervals.icu/t/intervals-icu-api-terms-and-conditions/114087
+
+Write:
+- `PUT https://intervals.icu/api/v1/athlete/0/wellness/{yyyy-MM-dd}` (local date),
+  JSON `{"restingHR": 52, "hrv": 68.4, "hrvSDNN": 61.2}`. Only supplied fields
+  change, so retries are idempotent. `restingHR` int32, `hrv`/`hrvSDNN` float.
+  `hrv` = rMSSD per the developer's forum statements (not stated in schema).
+- `PUT /api/v1/athlete/0/wellness-bulk` with an array of records, each with
+  `id` = date. Use it to flush the offline queue.
+- Athlete id `0` = the token's athlete.
+
+Auth:
+- Development: personal API key, Basic auth, username `API_KEY`.
+- Release: OAuth 2.0 authorisation code + PKCE as a **public client** (no client
+  secret in the app). PKCE/public clients announced 20 Oct 2026.
+  - Authorise: `https://intervals.icu/oauth/authorize?client_id=..&redirect_uri=..&scope=WELLNESS:WRITE&state=..&code_challenge=..&code_challenge_method=S256`
+    (S256 only; verifier 43-128 chars of A-Z a-z 0-9 - . _ ~; challenge =
+    base64url(sha256(verifier)) without padding).
+  - Exchange within 2 minutes: POST form `client_id`, `code`, `code_verifier` to
+    `https://intervals.icu/api/oauth/token`. Response: `access_token`, `scope`,
+    `athlete {id, name}`.
+  - Check returned `scope` contains `WELLNESS:WRITE` (users can deselect scopes).
+  - Redirect URIs must be registered exactly; no wildcards. Custom scheme
+    (e.g. `hrvbridge://oauth`) is used by other Android apps (Cadence uses
+    `cadence://intervalsicu`), but not explicitly confirmed for public clients.
+  - No refresh tokens (2021 statement). Treat 401/403 as "reconnect".
+    Multiple tokens per athlete per app are allowed.
+  - Disconnect: `DELETE https://intervals.icu/api/v1/disconnect-app` with bearer.
+  - App is "Pending" until approved; OAuth flow does not work before approval.
+- Rate limit ~10 req/s per IP. Irrelevant at 1 call/day.
+- Store token encrypted: AES-GCM key in Android Keystore, ciphertext in
+  SharedPreferences/DataStore. Exclude from auto-backup. Do NOT use
+  androidx.security-crypto (deprecated).
+
+Overwrite handling (decided): no locking. On the connect screen, tell users
+that other services (Garmin, Oura, Whoop...) syncing resting HR/HRV to
+Intervals.icu can overwrite these values, and that they should untick Resting
+HR and HRV in those connections in Intervals.icu settings. Verify exact menu
+labels before shipping. Optional lean check: next morning GET yesterday's
+record, compare with what was uploaded, show a one-line hint if changed.
+
+Draft connect-screen copy:
+> **Keep your morning values intact**
+> This app writes your resting HR and HRV (rMSSD, SDNN) to today's wellness
+> record in Intervals.icu. If another service (e.g. Garmin, Oura, Whoop) also
+> sends resting HR or HRV to Intervals.icu, it may overwrite these values.
+> To prevent that, open Intervals.icu settings, and for each connected service
+> untick Resting HR and HRV.
+
+## Android specifics
+
+- Manifest: `BLUETOOTH_SCAN` (`usesPermissionFlags="neverForLocation"`),
+  `BLUETOOTH_CONNECT`, legacy `BLUETOOTH`/`BLUETOOTH_ADMIN` maxSdkVersion 30,
+  `ACCESS_FINE_LOCATION` maxSdkVersion 30, `INTERNET`.
+- Runtime: Nearby devices on 12+, location on 11 and lower.
+- Scan filtered by service UUID 0x180D; remember last device; auto-connect.
+- Retry failed uploads on next app open (WorkManager only if really needed).
+
+## Later destinations (not now)
+
+- Health Connect: `HeartRateVariabilityRmssdRecord`, `RestingHeartRateRecord`
+  (no SDNN type). Needs Play Health Connect declaration.
+- Apple HealthKit (iOS phase): RMSSD type reportedly new in iOS 27, verify.
+- TrainingPeaks: not accepting new API partners. Parked.
+
+## Testing constraint
+
+Paul has no Android phone. BLE cannot be tested in an emulator. Until a
+physical device is available: keep `:core` fully unit-tested with synthetic
+and recorded byte streams, and make the app runnable with a "simulated strap"
+debug mode that replays test vectors through the same pipeline.
+
+## Build and CI
+
+- Cloud session environment: see `scripts/cloud-setup.sh` (installs Android
+  SDK; needs `dl.google.com` allowed in addition to the Trusted defaults).
+- Commands: `./gradlew :core:test`, `./gradlew :app:assembleDebug`, `./gradlew lint`.
+- GitHub Actions: on every push run `:core:test` and `assembleDebug`, upload
+  the debug APK as an artifact.
+
+## Open questions
+
+- Custom-scheme redirect for public clients? Token lifetime? (ask on forum)
+- Exact Intervals.icu connection settings labels for disabling RHR/HRV sync.
+- Final app name and package ID.
