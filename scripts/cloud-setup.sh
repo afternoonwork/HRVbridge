@@ -42,4 +42,15 @@ sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0
   echo "export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:\$PATH"
 } >> "$HOME/.bashrc"
 
+# Maven Central often answers 429 to the shared cloud egress IP. Gradle tries
+# Google's public Maven Central mirror first (this machine only, not the build).
+mkdir -p "$HOME/.gradle/init.d"
+cat > "$HOME/.gradle/init.d/maven-central-mirror.gradle.kts" <<'GRADLE'
+beforeSettings {
+    val mirror = "https://maven-central.storage-download.googleapis.com/maven2/"
+    pluginManagement.repositories { maven(mirror) }
+    dependencyResolutionManagement.repositories { maven(mirror) }
+}
+GRADLE
+
 echo "Android SDK installed at $ANDROID_HOME"
