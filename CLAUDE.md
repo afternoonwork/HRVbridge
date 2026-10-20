@@ -5,8 +5,20 @@ measurement from a Bluetooth chest strap and writes resting HR, rMSSD and SDNN
 to the user's Intervals.icu wellness record. It is a bridge, not an analysis
 tool: no charts, trends, baselines or readiness scores. Intervals.icu does that.
 
-Owner: Paul. Repo: mularmularmular/HRVbridge (private). Public release planned
+Owner: Paul. Repo: mularmularmular/HRVbridge, **public** (since 20 Oct 2026),
+deliberately with **no licence**: do not add one. Public release planned
 (Google Play first, App Store later), free, donation link outside the app.
+
+## Public repo rules
+
+- Never commit secrets: API keys, real tokens, signing keys, keystores,
+  passwords. Tests use obviously fake values (e.g. `abc123`).
+- Never commit personal data. Real strap recordings (raw H9 notification
+  bytes) contain Paul's own heart data: only Paul decides whether to commit
+  one. Agents must not commit real recordings; use synthetic data and the
+  simulated strap instead.
+- Debug logs and session files shared by users are personal data too: keep
+  them out of the repo, issues and PRs unless Paul explicitly says so.
 
 ## Hard scope rules
 
