@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HRV Bridge</string>
+    <string name="no_strap_yet">Bluetooth strap support is not implemented yet.</string>
+    <string name="cancelled_in_background">The measurement was cancelled because the app left the screen. Keep it open while measuring.</string>
+
+    <string name="sim_title">Simulated strap (debug builds only)</string>
+    <string name="sim_speed">Speed</string>
+    <string name="sim_speed_value">%1$d×</string>
+    <string name="sim_start">Start simulated measurement</string>
+
+    <string name="checking">Checking the signal: %1$d s</string>
+    <string name="poor_contact">Poor contact. Moisten the electrodes and make sure the strap fits snugly.</string>
+    <string name="stabilising">Settling in. Lie still and breathe normally. %1$d s</string>
+    <string name="measuring">Measuring: %1$d s left. Beats: %2$d</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="fail_no_data">No data was received from the strap.</string>
+    <string name="fail_no_rr">This sensor does not send beat-to-beat data.</string>
+    <string name="fail_implausible">The strap\'s beat-to-beat data does not match its heart rate. Check the strap and try again.</string>
+    <string name="fail_disconnected">The strap disconnected.</string>
+    <string name="try_again">Try again</string>
+
+    <string name="result_rhr">Resting HR: %1$d bpm</string>
+    <string name="result_rmssd">rMSSD: %1$s ms</string>
+    <string name="result_sdnn">SDNN: %1$s ms</string>
+    <string name="result_beats">Beats accepted: %1$d of %2$d</string>
+    <string name="result_none">Not enough beats to calculate results. Please repeat.</string>
+    <string name="unreliable">Measurement unreliable, please repeat.</string>
+    <string name="upload_anyway">Upload anyway</string>
+    <string name="uploading">Uploading…</string>
+    <string name="uploaded">Uploaded.</string>
+    <string name="upload_failed">Upload failed: %1$s</string>
+    <string name="dry_run_note">Dry run, nothing was sent. Request:</string>
+    <string name="done">Done</string>
+</resources>
