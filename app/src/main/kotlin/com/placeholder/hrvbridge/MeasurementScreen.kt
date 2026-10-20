@@ -16,7 +16,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -52,8 +51,14 @@ fun MeasurementScreen(controller: MeasurementController) {
             null -> if (controller.connecting) {
                 Text(stringResource(R.string.connecting), style = MaterialTheme.typography.titleMedium)
                 OutlinedButton(onClick = controller::reset) { Text(stringResource(R.string.cancel)) }
+            } else if (controller.credential == null) {
+                // Not connected yet: connecting comes first.
+                ConnectionSection(controller)
+                HorizontalDivider()
+                IdleContent(controller)
             } else {
                 IdleContent(controller)
+                HorizontalDivider()
                 ConnectionSection(controller)
             }
             is SessionState.Checking -> Running(controller, s.poorContact) {
@@ -225,7 +230,6 @@ private fun ShareLogButton(controller: MeasurementController) {
 
 @Composable
 private fun ConnectionSection(controller: MeasurementController) {
-    HorizontalDivider()
     Text(stringResource(R.string.connection_title), style = MaterialTheme.typography.titleMedium)
     when (val c = controller.credential) {
         null -> Text(stringResource(R.string.connection_none))
@@ -237,12 +241,12 @@ private fun ConnectionSection(controller: MeasurementController) {
     if (controller.credential != null) {
         OutlinedButton(onClick = controller::disconnect) { Text(stringResource(R.string.disconnect)) }
     } else {
-        var expanded by rememberSaveable { mutableStateOf(false) }
         var key by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<SaveKeyResult?>(null) }
-        TextButton(onClick = { expanded = !expanded }) { Text(stringResource(R.string.advanced_api_key)) }
-        if (expanded) {
-            Text(stringResource(R.string.api_key_hint), style = MaterialTheme.typography.bodySmall)
+        // v1 connect path: the user's personal API key (OAuth deferred, see CLAUDE.md).
+        Text(stringResource(R.string.api_key_where))
+        Text(stringResource(R.string.api_key_stored), style = MaterialTheme.typography.bodySmall)
+        run {
             OutlinedTextField(
                 value = key,
                 onValueChange = { key = it; error = null },

@@ -127,10 +127,16 @@ Write:
   `id` = date. Use it to flush the offline queue.
 - Athlete id `0` = the token's athlete.
 
-Auth:
-- Development: personal API key, Basic auth, username `API_KEY`.
-- Release: OAuth 2.0 authorisation code + PKCE as a **public client** (no client
-  secret in the app). PKCE/public clients announced 20 Oct 2026.
+Auth (decided 20 Oct 2026 by Paul):
+- v1 (Android and iOS): the user's personal Intervals.icu API key is the
+  primary and only connect method. Basic auth, username `API_KEY`. The user
+  pastes it on the connect screen (Intervals.icu > Settings > Developer
+  Settings). Real uploads with the key in release builds too.
+- OAuth is deferred. Keep the existing PKCE/OAuth helpers and their tests,
+  but do not build the browser flow. Notes for later:
+- OAuth 2.0 authorisation code + PKCE as a **public client** (no client
+  secret in the app). PKCE/public clients announced 20 Oct 2026. When built,
+  read the client ID from a Gradle property, never hardcode it.
   - Authorise: `https://intervals.icu/oauth/authorize?client_id=..&redirect_uri=..&scope=WELLNESS:WRITE&state=..&code_challenge=..&code_challenge_method=S256`
     (S256 only; verifier 43-128 chars of A-Z a-z 0-9 - . _ ~; challenge =
     base64url(sha256(verifier)) without padding).
@@ -153,9 +159,10 @@ Auth:
     rule files), Keystore alias `hrvbridge_credential`. Undecryptable data
     is cleared and treated as "not connected". The Keystore path itself is
     untested (Robolectric has no AndroidKeyStore); verify on a device.
-  - "Advanced: paste personal API key" on the main screen stores an
+  - The connect screen (shown first while not connected) stores an
     `ApiKey` credential. Without a credential, debug builds dry-run the
-    upload; release builds report "not connected".
+    upload; release builds report "not connected" and keep the session
+    pending, so it uploads once a key is saved.
 - No live Intervals.icu calls from cloud sessions. Tests use local servers.
 
 Overwrite handling (decided): no locking. On the connect screen, tell users
@@ -254,6 +261,9 @@ Draft connect-screen copy:
 
 ## Open questions
 
+- Intervals.icu says apps used by more than one person should use OAuth.
+  v1 uses personal API keys; revisit (OAuth app approval, `client_id`)
+  before public release.
 - Custom-scheme redirect for public clients? Token lifetime? (ask on forum)
 - Exact Intervals.icu connection settings labels for disabling RHR/HRV sync.
 - Final app name and package ID.
