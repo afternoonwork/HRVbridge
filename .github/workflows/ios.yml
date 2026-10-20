@@ -53,8 +53,11 @@ jobs:
             -destination "generic/platform=iOS Simulator" \
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
-            | tail -n 200
-          exit "${PIPESTATUS[0]}"
+            > xcodebuild-simulator.log 2>&1 || status=$?
+          tail -n 40 xcodebuild-simulator.log
+          echo "Swift warnings and errors:"
+          grep -E "\.swift:[0-9]+:[0-9]+: (warning|error):" xcodebuild-simulator.log | sort -u || echo "none"
+          exit "${status:-0}"
 
       # Paul installs on a real iPhone: also compile against the device SDK.
       - name: Build app for iOS devices (no signing)
@@ -66,5 +69,8 @@ jobs:
             -destination "generic/platform=iOS" \
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
-            | tail -n 200
-          exit "${PIPESTATUS[0]}"
+            > xcodebuild-device.log 2>&1 || status=$?
+          tail -n 40 xcodebuild-device.log
+          echo "Swift warnings and errors:"
+          grep -E "\.swift:[0-9]+:[0-9]+: (warning|error):" xcodebuild-device.log | sort -u || echo "none"
+          exit "${status:-0}"
