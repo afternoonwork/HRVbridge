@@ -1,0 +1,56 @@
+name: iOS
+
+# macOS minutes are expensive on a private repo: run only for iOS changes,
+# once per PR push (no separate branch-push run), and cancel superseded runs.
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "core/src/test/resources/test-vectors.json"
+      - ".github/workflows/ios.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "core/src/test/resources/test-vectors.json"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Paul builds locally with Xcode 26.3 (Intel Mac maximum). Use the same
+      # version when the runner image has it, otherwise the newest 26.x.
+      - name: Select Xcode
+        run: |
+          ls -d /Applications/Xcode*.app || true
+          XCODE=/Applications/Xcode_26.3.app
+          if [ ! -d "$XCODE" ]; then
+            XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          fi
+          if [ -n "$XCODE" ] && [ -d "$XCODE" ]; then sudo xcode-select -s "$XCODE"; fi
+          xcodebuild -version
+          swift --version
+
+      - name: HRVCore tests
+        run: swift test --package-path ios/HRVCore
+
+      - name: Build app for the iOS simulator (no signing)
+        run: |
+          xcodebuild build \
+            -project ios/HRVBridge/HRVBridge.xcodeproj \
+            -scheme HRVBridge \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -n 200
+          exit "${PIPESTATUS[0]}"
