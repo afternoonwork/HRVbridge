@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -270,4 +272,28 @@ private fun ConnectionSection(controller: MeasurementController) {
     }
     Text(stringResource(R.string.keep_values_title), style = MaterialTheme.typography.titleSmall)
     Text(stringResource(R.string.keep_values_body), style = MaterialTheme.typography.bodySmall)
+    DeleteMeasurementsButton(controller)
+}
+
+@Composable
+private fun DeleteMeasurementsButton(controller: MeasurementController) {
+    var confirm by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    OutlinedButton(onClick = { confirm = true }) { Text(stringResource(R.string.delete_all)) }
+    if (done) Text(stringResource(R.string.delete_all_done), style = MaterialTheme.typography.bodySmall)
+    if (confirm) {
+        AlertDialog(
+            onDismissRequest = { confirm = false },
+            title = { Text(stringResource(R.string.delete_all_title)) },
+            text = { Text(stringResource(R.string.delete_all_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    controller.deleteAllMeasurements()
+                    confirm = false
+                    done = true
+                }) { Text(stringResource(R.string.delete_all_confirm)) }
+            },
+            dismissButton = { TextButton(onClick = { confirm = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
 }

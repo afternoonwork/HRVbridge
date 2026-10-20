@@ -46,6 +46,11 @@
         <item quantity="one">Uploaded %1$d earlier measurement.</item>
         <item quantity="other">Uploaded %1$d earlier measurements.</item>
     </plurals>
+    <string name="delete_all">Delete all measurements</string>
+    <string name="delete_all_title">Delete all measurements?</string>
+    <string name="delete_all_body">This deletes every measurement stored on this phone and the debug log. Your API key stays saved, and nothing is deleted in Intervals.icu. Measurements not yet uploaded will be lost.</string>
+    <string name="delete_all_confirm">Delete</string>
+    <string name="delete_all_done">All measurements on this phone were deleted.</string>
     <string name="share_log">Share debug log</string>
     <string name="share_log_subject">HRV Bridge debug log</string>
 
