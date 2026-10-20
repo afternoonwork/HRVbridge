@@ -78,6 +78,8 @@ private class SimulatedStrap(
         this.listener = listener
         realStart = SystemClock.elapsedRealtime()
         next = 0
+        listener.onEvent("simulated: connected, ${packets.size} packets queued")
+        listener.onConnected()
         schedule()
     }
 

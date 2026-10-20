@@ -71,9 +71,16 @@ class MeasurementController @JvmOverloads constructor(
         private set
     var retry by mutableStateOf<RetryStatus>(RetryStatus.None)
         private set
+    /** Source started, not yet subscribed to 0x2A37. */
+    var connecting by mutableStateOf(false)
+        private set
+    /** Last attempt ended before the strap was connected. */
+    var connectFailed by mutableStateOf(false)
+        private set
 
     val isActive: Boolean
-        get() = session.let { it is SessionState.Checking || it is SessionState.Stabilising || it is SessionState.Measuring }
+        get() = connecting ||
+            session.let { it is SessionState.Checking || it is SessionState.Stabilising || it is SessionState.Measuring }
 
     private var logEpoch = SystemClock.elapsedRealtime()
     val log = DebugLog(clockMs = { SystemClock.elapsedRealtime() - logEpoch })
@@ -111,26 +118,52 @@ class MeasurementController @JvmOverloads constructor(
         startedAt = Instant.now()
         log.add("SESSION", "start $startedAt, app ${BuildConfig.VERSION_NAME}, $config")
         log.add("SOURCE", newSource.description)
-        val s = MeasurementSession(config, startMs = newSource.nowMs())
-        current = s
         source = newSource
+        connecting = true
+        connectFailed = false
+        session = null
+        current = null
         newSource.start(object : HeartRateSource.Listener {
+            private var s: MeasurementSession? = null
+
+            override fun onConnected() {
+                if (source !== newSource || s != null) return
+                log.add("SOURCE", "connected, measurement clock starts")
+                connecting = false
+                // The 10 s signal check starts only once notifications are on.
+                val started = MeasurementSession(config, startMs = newSource.nowMs())
+                s = started
+                current = started
+                publish()
+                handler.postDelayed(ticker, TICK_MS)
+            }
+
             override fun onPacket(bytes: ByteArray, timeMs: Long) {
-                if (current !== s) return
+                if (source !== newSource) return
                 log.add("RX", "t=$timeMs " + DebugLog.describePacket(bytes, HeartRateParser.parse(bytes)))
-                s.onPacket(bytes, timeMs)
+                val session = s ?: return
+                session.onPacket(bytes, timeMs)
                 publish()
             }
 
             override fun onDisconnected() {
-                if (current !== s) return
+                if (source !== newSource) return
                 log.add("SOURCE", "disconnected")
-                s.onDisconnected()
+                val session = s
+                if (session == null) {
+                    connecting = false
+                    connectFailed = true
+                    stopSource()
+                    return
+                }
+                session.onDisconnected()
                 publish()
             }
+
+            override fun onEvent(message: String) {
+                if (source === newSource) log.add("BLE", message)
+            }
         })
-        publish()
-        handler.postDelayed(ticker, TICK_MS)
     }
 
     /** Foreground only: leaving the app abandons a running measurement. */
@@ -146,6 +179,8 @@ class MeasurementController @JvmOverloads constructor(
         stopSource()
         current = null
         session = null
+        connecting = false
+        connectFailed = false
         upload = UploadStatus.None
         cancelledInBackground = false
     }
