@@ -18,14 +18,21 @@ if [ ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
   mkdir -p "$ANDROID_HOME/cmdline-tools"
   cd /tmp
   curl -fsSL -o cmdline-tools.zip "https://dl.google.com/android/repository/$CMDLINE_ZIP"
-  unzip -q -o cmdline-tools.zip -d "$ANDROID_HOME/cmdline-tools"
+  if command -v unzip > /dev/null; then
+    unzip -q -o cmdline-tools.zip -d "$ANDROID_HOME/cmdline-tools"
+  else
+    python3 -m zipfile -e cmdline-tools.zip "$ANDROID_HOME/cmdline-tools"
+    chmod +x "$ANDROID_HOME"/cmdline-tools/cmdline-tools/bin/*
+  fi
   rm -rf "$ANDROID_HOME/cmdline-tools/latest"
   mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
   rm cmdline-tools.zip
 fi
 
 export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
-yes | sdkmanager --licenses > /dev/null
+# "yes" is killed with SIGPIPE (exit 141) once sdkmanager stops reading;
+# with pipefail that would fail the script, so ignore the pipeline status.
+(yes || true) | sdkmanager --licenses > /dev/null || true
 sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" > /dev/null
 
 # Make the SDK location visible to later shells and to Gradle.
