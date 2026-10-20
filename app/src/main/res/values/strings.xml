@@ -35,6 +35,12 @@
     <string name="done">Done</string>
     <string name="upload_not_connected">Not uploaded: connect to Intervals.icu first.</string>
     <string name="upload_reconnect">Intervals.icu did not accept the stored credentials. Please reconnect.</string>
+    <string name="retry_in_progress">Uploading earlier measurements…</string>
+    <string name="retry_failed">Earlier measurements could not be uploaded yet. The app will try again next time it opens.</string>
+    <plurals name="retry_uploaded">
+        <item quantity="one">Uploaded %1$d earlier measurement.</item>
+        <item quantity="other">Uploaded %1$d earlier measurements.</item>
+    </plurals>
     <string name="share_log">Share debug log</string>
     <string name="share_log_subject">HRV Bridge debug log</string>
 

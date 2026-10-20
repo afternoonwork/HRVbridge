@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import com.placeholder.hrvbridge.core.ApiResult
 import com.placeholder.hrvbridge.core.Credential
 import com.placeholder.hrvbridge.core.DebugLog
 import com.placeholder.hrvbridge.core.HeartRateParser
@@ -26,6 +27,17 @@ import java.time.LocalDate
 import java.util.concurrent.Executors
 
 enum class SaveKeyResult { SAVED, BLANK, STORAGE_FAILED }
+
+/** Outcome of retrying earlier, not yet uploaded sessions on app open. */
+sealed interface RetryStatus {
+    data object None : RetryStatus
+
+    data object InProgress : RetryStatus
+
+    data class Uploaded(val count: Int) : RetryStatus
+
+    data class Failed(val reconnect: Boolean) : RetryStatus
+}
 
 sealed interface UploadStatus {
     data object None : UploadStatus
@@ -57,6 +69,8 @@ class MeasurementController @JvmOverloads constructor(
         private set
     var credential by mutableStateOf<Credential?>(null)
         private set
+    var retry by mutableStateOf<RetryStatus>(RetryStatus.None)
+        private set
 
     val isActive: Boolean
         get() = session.let { it is SessionState.Checking || it is SessionState.Stabilising || it is SessionState.Measuring }
@@ -74,6 +88,7 @@ class MeasurementController @JvmOverloads constructor(
 
     init {
         credential = credentials.load()?.also(log::addSecrets)
+        retryPending()
     }
 
     private val ticker = object : Runnable {
@@ -147,6 +162,38 @@ class MeasurementController @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Uploads earlier sessions that are still pending (newest per date) in one
+     * bulk PUT. Runs on app open; needs a credential, never dry-runs.
+     */
+    fun retryPending() {
+        val c = credential ?: return
+        if (retry == RetryStatus.InProgress) return
+        val batch = runCatching { sessions.retryBatch() }.getOrElse {
+            log.add("RETRY", "cannot read sessions: $it")
+            emptyList()
+        }
+        if (batch.isEmpty()) return
+        retry = RetryStatus.InProgress
+        log.add("RETRY", "${batch.size} pending: ${batch.joinToString { it.date.toString() }}")
+        val values = batch.map { WellnessValues.from(it.date, it.result!!) }
+        io.execute {
+            val res = client.putWellnessBulk(c, values)
+            handler.post {
+                log.add("RETRY", res.toString())
+                retry = when (res) {
+                    is ApiResult.Success -> {
+                        val now = Instant.now()
+                        batch.forEach { save(it.copy(uploadedAt = now)) }
+                        RetryStatus.Uploaded(batch.size)
+                    }
+                    is ApiResult.Unauthorised -> RetryStatus.Failed(reconnect = true)
+                    else -> RetryStatus.Failed(reconnect = false)
+                }
+            }
+        }
+    }
+
     /** "Advanced: paste personal API key". */
     fun saveApiKey(text: String): SaveKeyResult {
         val c = runCatching { Credential.ApiKey.fromUserInput(text) }.getOrNull() ?: return SaveKeyResult.BLANK
@@ -156,6 +203,7 @@ class MeasurementController @JvmOverloads constructor(
             return SaveKeyResult.STORAGE_FAILED
         }
         credential = c
+        retryPending()
         return SaveKeyResult.SAVED
     }
 

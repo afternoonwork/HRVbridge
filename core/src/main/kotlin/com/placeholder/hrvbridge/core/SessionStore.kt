@@ -22,12 +22,27 @@ class SessionStore(private val dir: File) {
             .sortedByDescending { it.startedAt }
 
     /**
+     * What to send in the bulk retry: for each date only the newest session,
+     * and only if that one is pending. An older pending session never
+     * overwrites a newer measurement of the same day. Newest date first.
+     */
+    fun retryBatch(): List<SessionRecord> {
+        val all = list()
+        return all.groupBy { it.date }.values
+            .map { sameDay -> sameDay.maxBy { it.startedAt } }
+            .filter { isPending(it) }
+            .sortedByDescending { it.date }
+    }
+
+    /**
      * Sessions to retry on next app open: never uploaded, with a result that
      * is reliable or that the user explicitly chose to upload anyway.
      * Unreliable results without that override are never retried.
      */
-    fun pendingUploads(): List<SessionRecord> = list().filter {
-        val r = it.result
-        r != null && it.uploadedAt == null && (r.reliable || it.uploadOverride)
+    fun pendingUploads(): List<SessionRecord> = list().filter(::isPending)
+
+    private fun isPending(s: SessionRecord): Boolean {
+        val r = s.result
+        return r != null && s.uploadedAt == null && (r.reliable || s.uploadOverride)
     }
 }

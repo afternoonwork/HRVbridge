@@ -181,8 +181,11 @@ Draft connect-screen copy:
 - Runtime: Nearby devices on 12+, location on 11 and lower.
 - Scan filtered by service UUID 0x180D; remember last device; auto-connect.
 - Retry failed uploads on next app open (WorkManager only if really needed).
-  `SessionStore.pendingUploads()` lists reliable, never-uploaded sessions;
-  the retry itself is not wired up yet.
+  Done: on app open (and right after saving a key) the newest pending
+  session per date is sent in one `PUT wellness-bulk`
+  (`SessionStore.retryBatch()`), so an older session never overwrites a
+  newer value of the same day. Pending = never uploaded, with a result that
+  is reliable or that the user chose to "Upload anyway".
 
 ## Later destinations (not now)
 
