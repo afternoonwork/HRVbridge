@@ -59,6 +59,8 @@ class MeasurementController @JvmOverloads constructor(
     private val config: SessionConfig = SessionConfig(),
     /** Tests point this at a local server. No other code changes it. */
     baseUrl: String = Intervals.BASE_URL,
+    /** Wall clock for session times and the wellness date; tests use a fixed one. */
+    private val wallClock: java.time.Clock = java.time.Clock.systemDefaultZone(),
 ) : AndroidViewModel(application) {
     /** Null when idle. */
     var session by mutableStateOf<SessionState?>(null)
@@ -115,7 +117,7 @@ class MeasurementController @JvmOverloads constructor(
         record = null
         log.clear()
         logEpoch = SystemClock.elapsedRealtime()
-        startedAt = Instant.now()
+        startedAt = Instant.now(wallClock)
         log.add("SESSION", "start $startedAt, app ${BuildConfig.VERSION_NAME}, $config")
         log.add("SOURCE", newSource.description)
         source = newSource
@@ -266,8 +268,9 @@ class MeasurementController @JvmOverloads constructor(
             is SessionState.Finished -> {
                 stopSource()
                 val r = SessionRecord(
-                    startedAt = startedAt ?: Instant.now(),
-                    date = LocalDate.now(),
+                    startedAt = startedAt ?: Instant.now(wallClock),
+                    // The wellness record is the local day the measurement started, not ended.
+                    date = (startedAt ?: Instant.now(wallClock)).atZone(wallClock.zone).toLocalDate(),
                     config = config,
                     series = state.series,
                     result = state.result,

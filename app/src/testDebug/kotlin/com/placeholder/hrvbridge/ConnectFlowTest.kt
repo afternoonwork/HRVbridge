@@ -80,6 +80,33 @@ class ConnectFlowTest {
         assertNull(c.session)
     }
 
+    private class MutableClock(var now: java.time.Instant, private val zone: java.time.ZoneId) : java.time.Clock() {
+        override fun getZone() = zone
+
+        override fun withZone(zone: java.time.ZoneId) = MutableClock(now, zone)
+
+        override fun instant() = now
+    }
+
+    @Test
+    fun wellnessDateIsTheLocalDayTheMeasurementStarted() {
+        // Starts 23:59 in Berlin on 14 Mar, finishes after midnight: the record is for 14 Mar.
+        val clock = MutableClock(java.time.Instant.parse("2026-03-14T22:59:00Z"), java.time.ZoneId.of("Europe/Berlin"))
+        val dir = java.nio.file.Files.createTempDirectory("sessions").toFile()
+        val c = testController(app, dir, wallClock = clock)
+        val src = FakeSource()
+        c.start(src)
+        src.listener!!.onConnected()
+        clock.now = java.time.Instant.parse("2026-03-14T23:02:30Z")
+        for (p in com.placeholder.hrvbridge.core.SimulatedStream.fromRr(List(200) { 1000.0 })) {
+            src.now = p.timeMs
+            src.listener!!.onPacket(p.bytes, p.timeMs)
+        }
+        assertTrue(c.session.toString(), c.session is SessionState.Finished)
+        val stored = com.placeholder.hrvbridge.core.SessionStore(dir).list().single()
+        assertEquals(java.time.LocalDate.of(2026, 3, 14), stored.date)
+    }
+
     @Test
     fun backgroundingWhileConnectingCancels() {
         val c = testController(app)
