@@ -1,6 +1,8 @@
 package com.placeholder.hrvbridge
 
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,7 +49,10 @@ fun MeasurementScreen(controller: MeasurementController) {
     ) {
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
         when (val s = controller.session) {
-            null -> {
+            null -> if (controller.connecting) {
+                Text(stringResource(R.string.connecting), style = MaterialTheme.typography.titleMedium)
+                OutlinedButton(onClick = controller::reset) { Text(stringResource(R.string.cancel)) }
+            } else {
                 IdleContent(controller)
                 ConnectionSection(controller)
             }
@@ -92,10 +97,41 @@ private fun IdleContent(controller: MeasurementController) {
             color = MaterialTheme.colorScheme.error,
         )
     }
-    if (!DebugStrap.AVAILABLE) {
-        Text(stringResource(R.string.no_strap_yet))
+    if (controller.connectFailed) {
+        Text(stringResource(R.string.connect_failed), color = MaterialTheme.colorScheme.error)
+        ShareLogButton(controller)
+    }
+    val context = LocalContext.current
+    var simulated by rememberSaveable { mutableStateOf(DebugStrap.AVAILABLE) }
+    var permissionDenied by remember { mutableStateOf(false) }
+    val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        permissionDenied = !result.values.all { it }
+        if (!permissionDenied) controller.start(BleHeartRateSource(context))
+    }
+
+    if (DebugStrap.AVAILABLE) {
+        // Debug builds: choose between the real strap and the simulator.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = !simulated, onClick = { simulated = false }, label = { Text(stringResource(R.string.source_bluetooth)) })
+            FilterChip(selected = simulated, onClick = { simulated = true }, label = { Text(stringResource(R.string.source_simulated)) })
+        }
+    }
+    if (!simulated) {
+        if (permissionDenied) Text(stringResource(R.string.permission_denied), color = MaterialTheme.colorScheme.error)
+        Button(onClick = {
+            if (BlePermissions.granted(context)) {
+                controller.start(BleHeartRateSource(context))
+            } else {
+                permissions.launch(BlePermissions.required().toTypedArray())
+            }
+        }) { Text(stringResource(R.string.start_measurement)) }
         return
     }
+    SimulatorContent(controller)
+}
+
+@Composable
+private fun SimulatorContent(controller: MeasurementController) {
     val context = LocalContext.current
     val scenarios = remember { DebugStrap.scenarios(context) }
     var selected by rememberSaveable { mutableStateOf(scenarios.firstOrNull()) }

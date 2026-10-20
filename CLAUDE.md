@@ -180,6 +180,14 @@ Draft connect-screen copy:
   `ACCESS_FINE_LOCATION` maxSdkVersion 30, `INTERNET`.
 - Runtime: Nearby devices on 12+, location on 11 and lower.
 - Scan filtered by service UUID 0x180D; remember last device; auto-connect.
+  - Done (untested on a device): `BleHeartRateSource`. Scans with a 0x180D
+    filter, connects at once if the remembered address shows up, otherwise
+    after 3 s to the strongest strap seen; 20 s scan and 15 s connect
+    timeouts. Enables 0x2A37 notifications via the CCCD, then calls
+    `onConnected()`: the 10 s signal check starts only then. Packets are
+    timestamped on arrival in the GATT callback. Every GATT callback goes
+    to the debug log ("BLE" lines). Debug builds switch between Bluetooth
+    and the simulated strap on the main screen.
 - Retry failed uploads on next app open (WorkManager only if really needed).
   Done: on app open (and right after saving a key) the newest pending
   session per date is sent in one `PUT wellness-bulk`

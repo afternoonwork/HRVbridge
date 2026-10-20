@@ -12,15 +12,25 @@ interface HeartRateSource {
     /** Monotonic clock (ms) that packet timestamps and session ticks use. */
     fun nowMs(): Long
 
-    /** Starts delivering notifications. Callbacks arrive on the main thread. */
+    /**
+     * Finds and connects to the strap, then delivers notifications.
+     * Callbacks arrive on the main thread. After [stop] there are none.
+     */
     fun start(listener: Listener)
 
     fun stop()
 
     interface Listener {
+        /** Subscribed to 0x2A37; the measurement clock may start now. */
+        fun onConnected()
+
         /** Raw 0x2A37 notification value, unparsed. */
         fun onPacket(bytes: ByteArray, timeMs: Long)
 
+        /** Connection ended, or (before [onConnected]) connecting failed. */
         fun onDisconnected()
+
+        /** Human-readable connection event for the debug log (GATT callbacks, status codes). */
+        fun onEvent(message: String)
     }
 }
