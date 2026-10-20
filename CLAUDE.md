@@ -1,6 +1,6 @@
 # HRV Bridge (working title, placeholder)
 
-A deliberately minimal Android app (iOS later) that records a 1-minute morning
+A deliberately minimal Android and iOS app that records a 1-minute morning
 measurement from a Bluetooth chest strap and writes resting HR, rMSSD and SDNN
 to the user's Intervals.icu wellness record. It is a bridge, not an analysis
 tool: no charts, trends, baselines or readiness scores. Intervals.icu does that.
@@ -28,8 +28,22 @@ Owner: Paul. Repo: mularmularmular/HRVbridge (private). Public release planned
     browser/Custom Tab, token storage, HTTP (`HttpURLConnection`, no OkHttp
     unless needed).
 - Keep dependencies minimal. Prefer platform APIs.
-- Later iOS port: SwiftUI + CoreBluetooth, sharing `core/src/test/resources/test-vectors.json`
-  as the contract both test suites must pass.
+- iOS app built in parallel (see "iOS (parallel track)"): SwiftUI +
+  CoreBluetooth, sharing `core/src/test/resources/test-vectors.json` as the
+  contract both test suites must pass.
+
+## Repo layout and parallel work
+
+- Android: `core/`, `app/`, Gradle files, `.github/workflows/android.yml`.
+  Built in a Claude Code cloud session.
+- iOS: everything under `ios/`. Built locally on Paul's Mac with the Claude
+  Code CLI.
+- Shared: `core/src/test/resources/test-vectors.json` (byte streams, RR series,
+  expected RHR/rMSSD/SDNN). Change it only via its own PR, and update both
+  implementations' tests in the same PR or a directly following one.
+- Each track works on its own branches (`android/...`, `ios/...`) and merges to
+  `main` via PR. Always `git pull --rebase` before pushing; never force-push
+  `main`.
 
 ## Sensors
 
@@ -146,10 +160,36 @@ Draft connect-screen copy:
 
 ## Testing constraint
 
-Paul has no Android phone. BLE cannot be tested in an emulator. Until a
-physical device is available: keep `:core` fully unit-tested with synthetic
-and recorded byte streams, and make the app runnable with a "simulated strap"
-debug mode that replays test vectors through the same pipeline.
+- Reference strap: **Polar H9** (standard 0x180D with RR). Close Polar Flow and
+  other apps before testing; the strap may accept only one BLE connection.
+- Paul has no Android phone. BLE cannot be tested in an emulator. Until a
+  physical device is available: keep `:core` fully unit-tested with synthetic
+  and recorded byte streams, and make the app runnable with a "simulated strap"
+  debug mode that replays test vectors through the same pipeline.
+- Real-strap testing happens first on iOS (iPhone SE 2020). Record raw 0x2A37
+  notification bytes from the H9 there and commit them as test vectors, so the
+  Android pipeline is tested against real data too.
+
+## iOS (parallel track)
+
+- Device: iPhone SE 2020 on iOS 26.6.1. Paul does not want to update to
+  iOS 27 unless necessary.
+- Mac: MacBook Pro 13" 2018, Intel, macOS Sequoia. Max Xcode is **26.3**
+  (needs macOS 15.6+; Xcode 26.4+ needs Tahoe; Xcode 27 is Apple silicon
+  only). Xcode may live on an external APFS SSD; select it with
+  `sudo xcode-select -s /Volumes/<SSD>/Xcode.app`.
+- No simulators needed (BLE needs the real device). Build and install from the
+  CLI: `xcodebuild` + `xcrun devicectl device install app`.
+- Free Apple ID "Personal Team" signing for on-device testing (install expires
+  after 7 days). Apple Developer Program (99 USD/year) only for TestFlight and
+  App Store, later. Store builds may need a GitHub Actions macOS runner once
+  Apple requires a newer Xcode than 26.3.
+- Deployment target: iOS 17 unless there is a reason to go lower or higher.
+- `NSBluetoothAlwaysUsageDescription` in Info.plist. Foreground-only session,
+  no `bluetooth-central` background mode.
+- OAuth: `ASWebAuthenticationSession`, PKCE, token in Keychain
+  (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`).
+- Same spec as Android for parsing, filtering, maths and Intervals.icu calls.
 
 ## Build and CI
 
