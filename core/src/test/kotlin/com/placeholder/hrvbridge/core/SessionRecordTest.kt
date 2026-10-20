@@ -11,7 +11,7 @@ class SessionRecordTest {
     private val rr = listOf(800.0, 850.0, 250.0, 820.0, 880.0, 999.0234375)
     private val series = ArtefactFilter.filter(rr)
 
-    private fun record(uploadedAt: Instant? = null) = SessionRecord(
+    private fun record(uploadedAt: Instant? = null, uploadOverride: Boolean = false) = SessionRecord(
         startedAt = Instant.parse("2026-10-20T05:30:00Z"),
         date = LocalDate.of(2026, 10, 20),
         config = SessionConfig(),
@@ -19,6 +19,7 @@ class SessionRecordTest {
         result = HrvMetrics.compute(series),
         malformedPackets = 1,
         uploadedAt = uploadedAt,
+        uploadOverride = uploadOverride,
     )
 
     @Test
@@ -29,6 +30,20 @@ class SessionRecordTest {
         assertEquals(rr, back.series.rrMs)
         assertEquals(series.accepted, back.series.accepted)
         assertEquals(series.rejectReasons, back.series.rejectReasons)
+    }
+
+    @Test
+    fun roundTripsUploadOverride() {
+        assertEquals(true, SessionRecord.fromJson(record(uploadOverride = true).toJson()).uploadOverride)
+        assertEquals(false, SessionRecord.fromJson(record().toJson()).uploadOverride)
+    }
+
+    @Test
+    fun missingOverrideFieldMeansNoOverride() {
+        // Files written before the field existed.
+        val text = record().toJson().replace(",\"uploadOverride\":false", "")
+        assertEquals(false, text.contains("uploadOverride"))
+        assertEquals(false, SessionRecord.fromJson(text).uploadOverride)
     }
 
     @Test

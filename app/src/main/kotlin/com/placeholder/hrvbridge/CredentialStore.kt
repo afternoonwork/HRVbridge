@@ -11,6 +11,7 @@ import com.placeholder.hrvbridge.core.SecretBox
 import com.placeholder.hrvbridge.core.SecretBoxException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
+import java.security.ProviderException
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 
@@ -58,15 +59,27 @@ class CredentialStore(private val prefs: SharedPreferences, private val keys: Ke
             // Keystore trouble (e.g. unrecoverable key): reconnect rather than crash.
             clear()
             null
+        } catch (e: ProviderException) {
+            // Some devices throw this RuntimeException from AndroidKeyStore.
+            clear()
+            null
         } catch (e: IllegalArgumentException) {
             clear()
             null
         }
     }
 
-    fun save(credential: Credential) {
-        val box = SecretBox.seal(keys.getOrCreateKey(), credential.toJson().toByteArray())
+    /** False if the Keystore could not encrypt; nothing is stored then. */
+    fun save(credential: Credential): Boolean {
+        val box = try {
+            SecretBox.seal(keys.getOrCreateKey(), credential.toJson().toByteArray())
+        } catch (e: GeneralSecurityException) {
+            return false
+        } catch (e: ProviderException) {
+            return false
+        }
         prefs.edit { putString(KEY, Base64.encodeToString(box, Base64.NO_WRAP)) }
+        return true
     }
 
     fun clear() {

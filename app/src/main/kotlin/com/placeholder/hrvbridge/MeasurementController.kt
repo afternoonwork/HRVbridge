@@ -25,6 +25,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.util.concurrent.Executors
 
+enum class SaveKeyResult { SAVED, BLANK, STORAGE_FAILED }
+
 sealed interface UploadStatus {
     data object None : UploadStatus
 
@@ -136,19 +138,25 @@ class MeasurementController @JvmOverloads constructor(
     /** User override for an unreliable measurement. */
     fun uploadAnyway() {
         val done = session as? SessionState.Finished ?: return
+        val r = record ?: return
         if (done.result != null && upload == UploadStatus.None) {
             log.add("UPLOAD", "user override for unreliable measurement")
+            // Persist the override first, so a failed upload is retried later.
+            record = r.copy(uploadOverride = true).also(::save)
             startUpload(done)
         }
     }
 
-    /** "Advanced: paste personal API key". Returns false if the input is blank. */
-    fun saveApiKey(text: String): Boolean {
-        val c = runCatching { Credential.ApiKey.fromUserInput(text) }.getOrNull() ?: return false
+    /** "Advanced: paste personal API key". */
+    fun saveApiKey(text: String): SaveKeyResult {
+        val c = runCatching { Credential.ApiKey.fromUserInput(text) }.getOrNull() ?: return SaveKeyResult.BLANK
         log.addSecrets(c)
-        credentials.save(c)
+        if (!credentials.save(c)) {
+            log.add("AUTH", "could not store credential: Keystore failure")
+            return SaveKeyResult.STORAGE_FAILED
+        }
         credential = c
-        return true
+        return SaveKeyResult.SAVED
     }
 
     fun disconnect() {

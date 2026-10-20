@@ -49,7 +49,7 @@ class UploadTest {
 
     private fun measure(): MeasurementController {
         val c = testController(app, dir, baseUrl = "http://127.0.0.1:${server.address.port}")
-        assertTrue(c.saveApiKey("  abc123  "))
+        assertEquals(SaveKeyResult.SAVED, c.saveApiKey("  abc123  "))
         c.start(DebugStrap.create(app, "Vector: clean 70 beats", 60))
         idleUntil { (c.upload as? UploadStatus.Done) != null }
         return c
@@ -100,6 +100,35 @@ class UploadTest {
 
     @Test
     fun blankKeyIsRejected() {
-        assertFalse(testController(app, dir).saveApiKey("   "))
+        assertEquals(SaveKeyResult.BLANK, testController(app, dir).saveApiKey("   "))
+    }
+
+    @Test
+    fun keystoreFailureOnSaveIsReportedNotThrown() {
+        val broken = object : KeyProvider {
+            override fun getOrCreateKey() = throw java.security.ProviderException("keystore")
+
+            override fun deleteKey() = Unit
+        }
+        val c = testController(app, dir, credentials = testCredentialStore(app, broken))
+        assertEquals(SaveKeyResult.STORAGE_FAILED, c.saveApiKey("abc123"))
+        assertNull(c.credential)
+    }
+
+    @Test
+    fun failedOverrideUploadStaysPending() {
+        status = 500
+        val c = testController(app, dir, baseUrl = "http://127.0.0.1:${server.address.port}")
+        c.saveApiKey("abc123")
+        c.start(DebugStrap.create(app, "Vector: more than 5 percent removed", 60))
+        idleUntil { c.session is SessionState.Finished }
+        assertEquals(UploadStatus.None, c.upload)
+        assertEquals(emptyList<Any>(), SessionStore(dir).pendingUploads())
+        c.uploadAnyway()
+        idleUntil { c.upload is UploadStatus.Done }
+        assertTrue((c.upload as UploadStatus.Done).result is UploadResult.Failure)
+        val stored = SessionStore(dir).list().single()
+        assertTrue(stored.uploadOverride)
+        assertEquals(listOf(stored.startedAt), SessionStore(dir).pendingUploads().map { it.startedAt })
     }
 }

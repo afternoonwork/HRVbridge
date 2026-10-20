@@ -22,8 +22,12 @@ class SessionStore(private val dir: File) {
             .sortedByDescending { it.startedAt }
 
     /**
-     * Reliable sessions that were never uploaded (for retry on next app open).
-     * Unreliable ones need an explicit user override and are never retried.
+     * Sessions to retry on next app open: never uploaded, with a result that
+     * is reliable or that the user explicitly chose to upload anyway.
+     * Unreliable results without that override are never retried.
      */
-    fun pendingUploads(): List<SessionRecord> = list().filter { it.result?.reliable == true && it.uploadedAt == null }
+    fun pendingUploads(): List<SessionRecord> = list().filter {
+        val r = it.result
+        r != null && it.uploadedAt == null && (r.reliable || it.uploadOverride)
+    }
 }

@@ -59,6 +59,25 @@ class SessionStoreTest {
     }
 
     @Test
+    fun overriddenUnreliableSessionIsPendingUntilUploaded() {
+        val series = ArtefactFilter.filter(listOf(1000.0, 1010.0, 990.0))
+        val r = SessionRecord(Instant.parse("2026-10-20T05:30:00Z"), LocalDate.parse("2026-10-20"), SessionConfig(),
+            series, HrvMetrics.compute(series), 0, uploadedAt = null, uploadOverride = true)
+        store.save(r)
+        assertEquals(listOf(r.startedAt), store.pendingUploads().map { it.startedAt })
+        store.save(r.copy(uploadedAt = Instant.parse("2026-10-20T05:34:00Z")))
+        assertEquals(emptyList(), store.pendingUploads())
+    }
+
+    @Test
+    fun sessionWithoutResultIsNeverPendingEvenWithOverride() {
+        val series = ArtefactFilter.filter(emptyList())
+        store.save(SessionRecord(Instant.parse("2026-10-20T05:30:00Z"), LocalDate.parse("2026-10-20"), SessionConfig(),
+            series, null, 0, uploadedAt = null, uploadOverride = true))
+        assertEquals(emptyList(), store.pendingUploads())
+    }
+
+    @Test
     fun createsDirectoryOnDemand() {
         val nested = SessionStore(dir.resolve("a/b"))
         nested.save(record("2026-10-20T05:30:00Z"))

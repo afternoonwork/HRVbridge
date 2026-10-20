@@ -193,23 +193,28 @@ private fun ConnectionSection(controller: MeasurementController) {
     } else {
         var expanded by rememberSaveable { mutableStateOf(false) }
         var key by remember { mutableStateOf("") }
-        var blank by remember { mutableStateOf(false) }
+        var error by remember { mutableStateOf<SaveKeyResult?>(null) }
         TextButton(onClick = { expanded = !expanded }) { Text(stringResource(R.string.advanced_api_key)) }
         if (expanded) {
             Text(stringResource(R.string.api_key_hint), style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(
                 value = key,
-                onValueChange = { key = it; blank = false },
+                onValueChange = { key = it; error = null },
                 label = { Text(stringResource(R.string.api_key_label)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
-                isError = blank,
-                supportingText = if (blank) ({ Text(stringResource(R.string.api_key_blank)) }) else null,
+                isError = error != null,
+                supportingText = when (error) {
+                    SaveKeyResult.BLANK -> ({ Text(stringResource(R.string.api_key_blank)) })
+                    SaveKeyResult.STORAGE_FAILED -> ({ Text(stringResource(R.string.api_key_storage_failed)) })
+                    else -> null
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
             Button(onClick = {
-                if (controller.saveApiKey(key)) key = "" else blank = true
+                val r = controller.saveApiKey(key)
+                if (r == SaveKeyResult.SAVED) key = "" else error = r
             }) { Text(stringResource(R.string.api_key_save)) }
         }
     }

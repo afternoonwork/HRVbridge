@@ -57,6 +57,33 @@ class CredentialStoreTest {
         assertNull(testCredentialStore(app, broken).load())
     }
 
+    private fun throwingKeys(e: RuntimeException) = object : KeyProvider {
+        override fun getOrCreateKey() = throw e
+
+        override fun deleteKey() = Unit
+    }
+
+    @Test
+    fun providerExceptionOnLoadMeansNotConnected() {
+        testCredentialStore(app).save(Credential.ApiKey("abc123"))
+        // Some devices throw this RuntimeException from AndroidKeyStore.
+        assertNull(testCredentialStore(app, throwingKeys(java.security.ProviderException("keystore"))).load())
+    }
+
+    @Test
+    fun saveReportsFailureInsteadOfThrowing() {
+        val store = testCredentialStore(app, throwingKeys(java.security.ProviderException("keystore")))
+        assertFalse(store.save(Credential.ApiKey("abc123")))
+        assertEquals(emptyMap<String, Any>(), prefs.all)
+        val invalid = object : KeyProvider {
+            override fun getOrCreateKey(): javax.crypto.SecretKey = javax.crypto.spec.SecretKeySpec(ByteArray(5), "AES")
+
+            override fun deleteKey() = Unit
+        }
+        assertFalse(testCredentialStore(app, invalid).save(Credential.ApiKey("abc123")))
+        assert(testCredentialStore(app).save(Credential.ApiKey("abc123")))
+    }
+
     @Test
     fun clearRemovesCredential() {
         val keys = InMemoryKeyProvider()

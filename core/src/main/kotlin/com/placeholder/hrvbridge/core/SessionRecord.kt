@@ -17,6 +17,8 @@ data class SessionRecord(
     val result: HrvResult?,
     val malformedPackets: Int,
     val uploadedAt: Instant?,
+    /** The user chose "Upload anyway" for an unreliable result; retried like a reliable one. */
+    val uploadOverride: Boolean = false,
 ) {
     val fileName: String
         get() = "session-" + startedAt.truncatedTo(ChronoUnit.SECONDS).toString().replace(':', '-') + ".json"
@@ -56,6 +58,7 @@ data class SessionRecord(
                 )
             },
             "uploadedAt" to uploadedAt?.toString(),
+            "uploadOverride" to uploadOverride,
         ),
     )
 
@@ -106,6 +109,7 @@ data class SessionRecord(
                 result = result,
                 malformedPackets = (root["malformedPackets"] as Number).toInt(),
                 uploadedAt = (root["uploadedAt"] as String?)?.let(Instant::parse),
+                uploadOverride = root["uploadOverride"] as Boolean? ?: false,
             )
         }
 
