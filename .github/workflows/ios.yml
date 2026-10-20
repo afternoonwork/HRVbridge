@@ -1,7 +1,7 @@
 name: iOS
 
-# macOS minutes are expensive on a private repo: run only for iOS changes,
-# once per PR push (no separate branch-push run), and cancel superseded runs.
+# Runs only for iOS changes (and the shared vectors), once per PR push plus
+# pushes to main; superseded runs are cancelled.
 on:
   pull_request:
     paths:
@@ -51,6 +51,19 @@ jobs:
             -scheme HRVBridge \
             -configuration Debug \
             -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -n 200
+          exit "${PIPESTATUS[0]}"
+
+      # Paul installs on a real iPhone: also compile against the device SDK.
+      - name: Build app for iOS devices (no signing)
+        run: |
+          xcodebuild build \
+            -project ios/HRVBridge/HRVBridge.xcodeproj \
+            -scheme HRVBridge \
+            -configuration Debug \
+            -destination "generic/platform=iOS" \
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             | tail -n 200
