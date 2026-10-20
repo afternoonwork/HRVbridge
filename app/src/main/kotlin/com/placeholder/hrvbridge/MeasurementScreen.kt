@@ -1,5 +1,6 @@
 package com.placeholder.hrvbridge
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,7 +10,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -26,7 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.placeholder.hrvbridge.core.Credential
 import com.placeholder.hrvbridge.core.FailReason
 import com.placeholder.hrvbridge.core.SessionState
 
@@ -38,7 +46,10 @@ fun MeasurementScreen(controller: MeasurementController) {
     ) {
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
         when (val s = controller.session) {
-            null -> IdleContent(controller)
+            null -> {
+                IdleContent(controller)
+                ConnectionSection(controller)
+            }
             is SessionState.Checking -> Running(controller, s.poorContact) {
                 stringResource(R.string.checking, seconds(s.elapsedMs))
             }
@@ -52,6 +63,7 @@ fun MeasurementScreen(controller: MeasurementController) {
             is SessionState.Failed -> {
                 Text(stringResource(failText(s.reason)))
                 Button(onClick = controller::reset) { Text(stringResource(R.string.try_again)) }
+                ShareLogButton(controller)
             }
         }
     }
@@ -130,15 +142,82 @@ private fun FinishedContent(controller: MeasurementController, s: SessionState.F
             }
             UploadStatus.InProgress -> Text(stringResource(R.string.uploading))
             is UploadStatus.Done -> when (val res = u.result) {
-                is UploadResult.Success -> {
-                    Text(stringResource(R.string.uploaded))
-                    // Only the dry-run uploader exists so far; show the request it built.
+                is UploadResult.Success -> if (res.dryRun) {
                     Text(stringResource(R.string.dry_run_note), style = MaterialTheme.typography.labelMedium)
                     Text(res.detail, style = MaterialTheme.typography.bodySmall)
+                } else {
+                    Text(stringResource(R.string.uploaded))
                 }
-                is UploadResult.Failure -> Text(stringResource(R.string.upload_failed, res.detail))
+                is UploadResult.Failure -> Text(
+                    when {
+                        res.reconnect -> stringResource(R.string.upload_reconnect)
+                        controller.credential == null -> stringResource(R.string.upload_not_connected)
+                        else -> stringResource(R.string.upload_failed, res.detail)
+                    },
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         }
     }
     Button(onClick = controller::reset) { Text(stringResource(R.string.done)) }
+    ShareLogButton(controller)
+}
+
+@Composable
+private fun ShareLogButton(controller: MeasurementController) {
+    val context = LocalContext.current
+    val subject = stringResource(R.string.share_log_subject)
+    val title = stringResource(R.string.share_log)
+    OutlinedButton(onClick = {
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_SUBJECT, subject)
+            .putExtra(Intent.EXTRA_TEXT, controller.shareText())
+        context.startActivity(Intent.createChooser(send, title))
+    }) { Text(title) }
+}
+
+@Composable
+private fun ConnectionSection(controller: MeasurementController) {
+    HorizontalDivider()
+    Text(stringResource(R.string.connection_title), style = MaterialTheme.typography.titleMedium)
+    when (val c = controller.credential) {
+        null -> Text(stringResource(R.string.connection_none))
+        is Credential.ApiKey -> Text(stringResource(R.string.connection_api_key))
+        is Credential.OAuth -> Text(
+            c.athleteName?.let { stringResource(R.string.connection_oauth, it) } ?: stringResource(R.string.connection_oauth_unnamed),
+        )
+    }
+    if (controller.credential != null) {
+        OutlinedButton(onClick = controller::disconnect) { Text(stringResource(R.string.disconnect)) }
+    } else {
+        var expanded by rememberSaveable { mutableStateOf(false) }
+        var key by remember { mutableStateOf("") }
+        var error by remember { mutableStateOf<SaveKeyResult?>(null) }
+        TextButton(onClick = { expanded = !expanded }) { Text(stringResource(R.string.advanced_api_key)) }
+        if (expanded) {
+            Text(stringResource(R.string.api_key_hint), style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = key,
+                onValueChange = { key = it; error = null },
+                label = { Text(stringResource(R.string.api_key_label)) },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                isError = error != null,
+                supportingText = when (error) {
+                    SaveKeyResult.BLANK -> ({ Text(stringResource(R.string.api_key_blank)) })
+                    SaveKeyResult.STORAGE_FAILED -> ({ Text(stringResource(R.string.api_key_storage_failed)) })
+                    else -> null
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(onClick = {
+                val r = controller.saveApiKey(key)
+                if (r == SaveKeyResult.SAVED) key = "" else error = r
+            }) { Text(stringResource(R.string.api_key_save)) }
+        }
+    }
+    Text(stringResource(R.string.keep_values_title), style = MaterialTheme.typography.titleSmall)
+    Text(stringResource(R.string.keep_values_body), style = MaterialTheme.typography.bodySmall)
 }

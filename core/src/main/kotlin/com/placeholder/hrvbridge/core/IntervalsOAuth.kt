@@ -21,6 +21,8 @@ object IntervalsOAuth {
     const val TOKEN_URL = "https://intervals.icu/api/oauth/token"
     const val SCOPE_WELLNESS_WRITE = "WELLNESS:WRITE"
 
+    fun tokenUrl(base: String = Intervals.BASE_URL): String = "$base/api/oauth/token"
+
     fun authorizeUrl(clientId: String, redirectUri: String, state: String, codeChallenge: String): String =
         AUTHORIZE_URL + "?" + form(
             "client_id" to clientId,

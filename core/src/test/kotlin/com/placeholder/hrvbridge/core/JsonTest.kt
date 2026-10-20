@@ -36,6 +36,25 @@ class JsonTest {
     }
 
     @Test
+    fun writesValuesThatParseBack() {
+        val v = mapOf(
+            "s" to "a\"b\n", "i" to 52, "l" to 7L, "d" to 68.4, "b" to true, "n" to null,
+            "list" to listOf(1000.0, 999.0234375), "nested" to mapOf("x" to emptyList<Any>()),
+        )
+        val text = Json.write(v)
+        assertEquals("""{"s":"a\"b\n","i":52,"l":7,"d":68.4,"b":true,"n":null,"list":[1000.0,999.0234375],"nested":{"x":[]}}""", text)
+        assertEquals(mapOf("s" to "a\"b\n", "i" to 52L, "l" to 7L, "d" to 68.4, "b" to true, "n" to null,
+            "list" to listOf(1000.0, 999.0234375), "nested" to mapOf("x" to emptyList<Any>())), Json.parse(text))
+    }
+
+    @Test
+    fun refusesNonFiniteNumbersAndUnknownTypes() {
+        assertFailsWith<JsonException> { Json.write(Double.NaN) }
+        assertFailsWith<JsonException> { Json.write(Double.POSITIVE_INFINITY) }
+        assertFailsWith<JsonException> { Json.write(Any()) }
+    }
+
+    @Test
     fun quotesStrings() {
         assertEquals("\"a\\\"b\\\\c\\n\\u0001\"", Json.quote("a\"b\\c\n\u0001"))
     }

@@ -23,7 +23,11 @@ object Intervals {
     const val DISCONNECT_URL = "$BASE_URL/api/v1/disconnect-app"
 
     /** PUT target; only supplied fields change, so retries are idempotent. */
-    fun wellnessUrl(date: LocalDate): String = "$BASE_URL/api/v1/athlete/0/wellness/$date"
+    fun wellnessUrl(date: LocalDate, base: String = BASE_URL): String = "$base/api/v1/athlete/0/wellness/$date"
+
+    fun wellnessBulkUrl(base: String = BASE_URL): String = "$base/api/v1/athlete/0/wellness-bulk"
+
+    fun disconnectUrl(base: String = BASE_URL): String = "$base/api/v1/disconnect-app"
 
     fun wellnessBody(v: WellnessValues): String = "{${fields(v)}}"
 

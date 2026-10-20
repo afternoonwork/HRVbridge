@@ -30,7 +30,7 @@ object DebugStrap {
 
     fun create(context: Context, scenario: String, speed: Int): HeartRateSource {
         val s = load(context).first { it.name == scenario }
-        return SimulatedStrap(s.packets(), speed.toDouble(), s.disconnectAtMs)
+        return SimulatedStrap("Simulated strap: $scenario at ${speed}x", s.packets(), speed.toDouble(), s.disconnectAtMs)
     }
 
     private fun load(context: Context): List<Scenario> = cache ?: build(context).also { cache = it }
@@ -62,6 +62,7 @@ object DebugStrap {
 
 /** Replays packets on the main thread at [speed] times real time. */
 private class SimulatedStrap(
+    override val description: String,
     private val packets: List<TimedPacket>,
     private val speed: Double,
     private val disconnectAtMs: Long?,
