@@ -2,6 +2,7 @@ package com.placeholder.hrvbridge.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class ArtefactFilterTest {
     @Test
@@ -34,6 +35,20 @@ class ArtefactFilterTest {
         val rr = listOf(1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1500.0, 1500.0, 1150.0)
         val r = ArtefactFilter.filter(rr)
         assertEquals(listOf(true, true, true, true, true, false, false, true), r.accepted)
+    }
+
+    @Test
+    fun heartRateShiftOverTwentyPercentRejectsRestAndFailsGate() {
+        // Documents current, intended behaviour: the reference median only
+        // moves with accepted beats, so after a sudden >20% shift every later
+        // beat is rejected and the quality gate fails ("please repeat").
+        val rr = List(40) { 1000.0 } + List(30) { 750.0 }
+        val r = ArtefactFilter.filter(rr)
+        assertEquals(List(40) { true } + List(30) { false }, r.accepted)
+        assertEquals(List(30) { RejectReason.RELATIVE }, r.rejectReasons.drop(40))
+        val m = HrvMetrics.compute(r)!!
+        assertEquals(30, m.removedBeats)
+        assertFalse(m.reliable)
     }
 
     @Test
