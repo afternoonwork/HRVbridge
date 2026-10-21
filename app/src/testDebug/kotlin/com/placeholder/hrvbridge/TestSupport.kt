@@ -31,7 +31,8 @@ fun testController(
     sessionsDir: java.io.File = Files.createTempDirectory("sessions").toFile(),
     credentials: CredentialStore = testCredentialStore(app),
     baseUrl: String = Intervals.BASE_URL,
-) = MeasurementController(app, credentials, SessionStore(sessionsDir), baseUrl = baseUrl)
+    wallClock: java.time.Clock = java.time.Clock.systemDefaultZone(),
+) = MeasurementController(app, credentials, SessionStore(sessionsDir), baseUrl = baseUrl, wallClock = wallClock)
 
 /** Runs the main looper until [done] or the (real-time) timeout, for work finishing on other threads. */
 fun idleUntil(timeoutMs: Long = 5_000, done: () -> Boolean) {

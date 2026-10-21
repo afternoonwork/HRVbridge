@@ -5,7 +5,7 @@
     <string name="source_bluetooth">Bluetooth strap</string>
     <string name="source_simulated">Simulated strap</string>
     <string name="connecting">Looking for your heart rate strap…</string>
-    <string name="connect_failed">Could not connect to a heart rate strap. Put it on, moisten the electrodes, check that Bluetooth is on, and close other apps that may be connected to it (e.g. Polar Flow).</string>
+    <string name="connect_failed">Couldn\'t connect. Close other apps using the strap (e.g. Polar Flow) and try again. Also check that Bluetooth is on and the strap is on and moistened.</string>
     <string name="permission_denied">Bluetooth permission is needed to find your strap. You can allow it in the app settings.</string>
     <string name="cancelled_in_background">The measurement was cancelled because the app left the screen. Keep it open while measuring.</string>
 

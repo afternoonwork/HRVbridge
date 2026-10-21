@@ -1,8 +1,15 @@
 name: Android
 
 on:
+  # Skip iOS-only changes, mirroring ios.yml (the shared test vectors still run).
   push:
+    paths-ignore:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
   pull_request:
+    paths-ignore:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
 
 jobs:
   build:
