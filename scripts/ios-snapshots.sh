@@ -53,6 +53,12 @@ xcrun simctl bootstatus "$DEVICE" -b > /dev/null
 xcrun simctl status_bar "$DEVICE" override --time 9:41 --batteryState charged --batteryLevel 100 \
   --cellularMode active --cellularBars 4 --wifiBars 3 || true
 xcrun simctl install "$DEVICE" "$APP"
+# The first launch after boot takes longer than the per-shot wait (it rendered blank
+# in CI), so warm the app up once before the real screenshots.
+set -- $SELECTED
+xcrun simctl launch "$DEVICE" "$BUNDLE" -uiSnapshot "$1" > /dev/null
+sleep 5
+xcrun simctl terminate "$DEVICE" "$BUNDLE" || true
 
 for appearance in $APPEARANCES; do
   xcrun simctl ui "$DEVICE" appearance "$appearance"
@@ -60,6 +66,11 @@ for appearance in $APPEARANCES; do
     xcrun simctl launch --terminate-running-process "$DEVICE" "$BUNDLE" -uiSnapshot "$s" > /dev/null
     sleep 2
     xcrun simctl io "$DEVICE" screenshot "$OUT/$s-$appearance.png" > /dev/null 2>&1
+    # A blank shot (status bar only) is far below the ~230 KB of a real one: retry once.
+    if [ "$(stat -f%z "$OUT/$s-$appearance.png")" -lt 60000 ]; then
+      sleep 2
+      xcrun simctl io "$DEVICE" screenshot "$OUT/$s-$appearance.png" > /dev/null 2>&1
+    fi
     echo "$s-$appearance.png"
   done
 done
