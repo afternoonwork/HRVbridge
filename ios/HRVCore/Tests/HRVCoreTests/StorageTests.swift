@@ -43,21 +43,22 @@ final class StorageTests: XCTestCase {
 
     func testStorePendingAndRetryBatch() throws {
         let store = SessionStore(directory: dir)
-        try store.save(record("2026-10-18T05:30:00Z"))
-        try store.save(record("2026-10-19T05:30:00Z"))
-        try store.save(record("2026-10-19T06:10:00Z"))
-        try store.save(record("2026-10-17T05:30:00Z", uploadedAt: Date()))
+        try store.save(record("2026-10-18T05:30:00Z", override: true))
+        try store.save(record("2026-10-19T05:30:00Z", override: true))
+        try store.save(record("2026-10-19T06:10:00Z", override: true))
+        try store.save(record("2026-10-17T05:30:00Z", uploadedAt: Date(), override: true))
         try store.save(record("2026-10-16T05:30:00Z", beats: 10))
         try store.save(record("2026-10-15T05:30:00Z", beats: 10, override: true))
-        XCTAssertEqual(store.list().count, 6)
+        try store.save(record("2026-10-14T05:30:00Z")) // reliable but never submitted
+        XCTAssertEqual(store.list().count, 7)
         XCTAssertEqual(store.pendingUploads().map { $0.date.description }, ["2026-10-19", "2026-10-19", "2026-10-18", "2026-10-15"])
         XCTAssertEqual(store.retryBatch().map { ISO8601DateFormatter().string(from: $0.startedAt) },
                        ["2026-10-19T06:10:00Z", "2026-10-18T05:30:00Z", "2026-10-15T05:30:00Z"])
         // A newer uploaded value of the same day is never overwritten.
-        try store.save(record("2026-10-19T06:10:00Z", uploadedAt: Date()))
+        try store.save(record("2026-10-19T06:10:00Z", uploadedAt: Date(), override: true))
         XCTAssertFalse(store.retryBatch().contains { $0.date.description == "2026-10-19" })
         try Data("{".utf8).write(to: dir.appendingPathComponent("session-garbage.json"))
-        XCTAssertEqual(store.list().count, 6)
+        XCTAssertEqual(store.list().count, 7)
     }
 
     func testDeleteAllRemovesOnlySessionFiles() throws {

@@ -26,7 +26,7 @@ public struct SessionRecord: Sendable {
     public var result: HrvResult?
     public var malformedPackets: Int
     public var uploadedAt: Date?
-    /// The user chose "Upload anyway" for an unreliable result; retried like a reliable one.
+    /// The user tapped Upload (or "Upload anyway" for an unreliable result). Nothing uploads without it.
     public var uploadOverride: Bool
     /// Morning questions answered for this measurement; retries send them too.
     public var answers: ReadinessAnswers?
@@ -57,10 +57,9 @@ public struct SessionRecord: Sendable {
         "session-" + ISO.string(startedAt, fractional: false).replacingOccurrences(of: ":", with: "-") + ".json"
     }
 
-    /// Reliable, or explicitly overridden, and never uploaded.
+    /// Submitted by the user and never uploaded.
     public var isPending: Bool {
-        guard let r = result else { return false }
-        return uploadedAt == nil && (r.reliable || uploadOverride)
+        result != nil && uploadedAt == nil && uploadOverride
     }
 
     public func jsonData() throws -> Data {

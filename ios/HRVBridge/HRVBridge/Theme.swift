@@ -13,6 +13,9 @@ enum Theme {
     static let lineStrong = dynamic(0x8A8A86, 0x74726C)
     /// Recording and uploaded only. Never text.
     static let accent = dynamic(0xE2561C, 0xFF6A2B)
+    /// The accent behind white text (the dial window): the light value in both modes,
+    /// because white on the dark-mode accent is below 3:1.
+    static let accentFill = dynamic(0xE2561C, 0xE2561C)
 
     /// The app name is a placeholder: keep it in one place.
     static let appName = "HRV Bridge"
