@@ -150,7 +150,7 @@ struct MainScreenState: Equatable {
     var warning: String? {
         switch phase {
         case let .couldNotConnect(name):
-            return "Couldn't connect to \(name). Check the strap is on and the electrodes are moist, and close other apps that may be connected to it."
+            return "Couldn't connect to \(name). Check the strap is on and the electrodes are moist. Close other apps that connect to your heart rate monitor."
         case let .bluetooth(problem):
             switch problem {
             case .off: return "Bluetooth is off. Turn it on in Control Centre or Settings, then try again."
@@ -307,14 +307,14 @@ struct MainScreenView: View {
     @ViewBuilder private var below: some View {
         switch state.phase {
         case .noStrap:
-            Notice(text: "Put the strap on and moisten the electrodes. Close Polar Flow and other apps that may be connected to it.")
+            Notice(text: "Put the strap on and moisten the electrodes. Close other apps that connect to your heart rate monitor.")
         case let .searching(found):
             strapList(found)
         case .connecting:
             EmptyView()
         case .connected:
             VStack(spacing: 4) {
-                Text("Lie still, then start.").font(.subheadline).foregroundStyle(Theme.ink)
+                Text("Sit still, then start.").font(.subheadline).foregroundStyle(Theme.ink)
                 Text(state.settlingSeconds == 0 ? "No settling time, then a 60 s measurement."
                                                 : "\(state.settlingSeconds) s settling, then a 60 s measurement.")
                     .font(.footnote).foregroundStyle(Theme.ink2)
@@ -326,7 +326,7 @@ struct MainScreenView: View {
             readout(mark: nil, label: "Checking signal", seconds: s,
                     detail: "Making sure the strap sends beat-to-beat data.", poor: poor)
         case let .settling(s, poor):
-            readout(mark: nil, label: "Settling", seconds: s, detail: "Lie still and breathe normally.", poor: poor)
+            readout(mark: nil, label: "Settling", seconds: s, detail: "Sit still and breathe normally.", poor: poor)
         case let .measuring(s, beats, poor):
             readout(mark: .accent, label: "Recording", seconds: s,
                     detail: beats == 1 ? "1 beat recorded" : "\(beats) beats recorded", poor: poor)

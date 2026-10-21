@@ -24,6 +24,9 @@ deliberately with **no licence**: do not add one. Public release planned
 
 - One measurement per day, one upload. No backend, no analytics, no tracking.
 - UI strings: British English. Never use em dashes or "--" in UI text or docs.
+- Copy (Paul, 21 Oct 2026): never name other apps such as Polar Flow; say
+  "Close other apps that connect to your heart rate monitor." The user sits
+  for the measurement: "sit still", never "lie still".
 - Name and package ID are placeholders: app name "HRV Bridge", package
   `com.placeholder.hrvbridge`. Must be replaced before the first Play upload
   (the package ID is permanent on Google Play).
@@ -246,8 +249,8 @@ Draft connect-screen copy:
 
 ## Testing constraint
 
-- Reference strap: **Polar H9** (standard 0x180D with RR). Close Polar Flow and
-  other apps before testing; the strap may accept only one BLE connection.
+- Reference strap: **Polar H9** (standard 0x180D with RR). Close other apps that
+  connect to the strap before testing; the strap may accept only one BLE connection.
 - Paul has no Android phone. BLE cannot be tested in an emulator. Until a
   physical device is available: keep `:core` fully unit-tested with synthetic
   and recorded byte streams, and make the app runnable with a "simulated strap"
