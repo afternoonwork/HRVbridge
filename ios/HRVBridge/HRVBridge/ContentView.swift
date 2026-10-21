@@ -217,7 +217,7 @@ struct MainView: View {
             stop: { confirmStop = true },
             done: { model.measurement.cancel() },
             again: { model.measureAgain() },
-            uploadAnyway: { model.measurement.uploadAnyway() },
+            upload: { model.measurement.submitUpload() },
             submitAnswers: { model.measurement.submitAnswers($0) },
             openSettings: {
                 if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }

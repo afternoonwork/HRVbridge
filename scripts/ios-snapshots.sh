@@ -11,7 +11,7 @@ mkdir -p "$OUT"
 STATES="dial connect connect-rejected connect-connected settings
 no-strap searching connecting connected retry cancelled could-not-connect bluetooth-off not-allowed
 poor-contact settling measuring failed-no-rr failed-disconnected
-uploading uploaded unreliable not-enough-beats upload-failed not-connected questions questions-answered"
+result uploading uploaded unreliable not-enough-beats upload-failed not-connected questions questions-answered"
 
 BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
 RUNTIME=$(xcrun simctl list runtimes -j | python3 -c '

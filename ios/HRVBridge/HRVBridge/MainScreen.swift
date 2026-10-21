@@ -200,7 +200,8 @@ struct MainActions {
     var done: () -> Void = {}
     /// After a failed measurement, or "Repeat": a new measurement with the same strap.
     var again: () -> Void = {}
-    var uploadAnyway: () -> Void = {}
+    /// "Upload to Intervals.icu", or "Upload anyway" for an unreliable result.
+    var upload: () -> Void = {}
     /// Morning questions: the answers, or nil for Skip.
     var submitAnswers: (ReadinessAnswers?) -> Void = { _ in }
     var openSettings: () -> Void = {}
@@ -215,7 +216,6 @@ struct MainScreenView: View {
 
     /// Measured heights of everything but the dial, so the dial can shrink to keep
     /// warnings and keys visible on small screens (iPhone SE).
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var topHeight: CGFloat = 0
     @State private var belowHeight: CGFloat = 0
     @State private var keysHeight: CGFloat = 0
@@ -261,12 +261,12 @@ struct MainScreenView: View {
         .background(Theme.bg.ignoresSafeArea())
     }
 
-    /// While measuring the hand sweeps with the wall clock: every frame, or once a second
-    /// with Reduce Motion (it still carries the time, only the smoothing goes).
+    /// While measuring the hand sweeps with the wall clock every frame, also with Reduce
+    /// Motion (it carries the time, like a seconds hand).
     @ViewBuilder private var dial: some View {
         let label = dialAccessibility ?? state.dialAccessibility
         if let clock = state.handClock {
-            TimelineView(.animation(minimumInterval: reduceMotion ? 1 : nil)) { _ in
+            TimelineView(.animation) { _ in
                 HeartDial(model: state.withHand(clock.angle(at: Clock.nowMs())).dial,
                           accessibilityText: label, pulse: state.pulse)
             }
@@ -474,7 +474,13 @@ struct MainScreenView: View {
             if !r.reliable && r.upload == .none {
                 VStack(spacing: 4) {
                     Button("Repeat", action: actions.again).buttonStyle(KeyStyle())
-                    Button("Upload anyway", action: actions.uploadAnyway).buttonStyle(TextKeyStyle())
+                    Button("Upload anyway", action: actions.upload).buttonStyle(TextKeyStyle())
+                }
+            } else if r.upload == .none {
+                // Nothing uploads until the user has seen the result and taps Upload.
+                VStack(spacing: 4) {
+                    Button("Upload to Intervals.icu", action: actions.upload).buttonStyle(KeyStyle())
+                    Button("Done", action: actions.done).buttonStyle(TextKeyStyle())
                 }
             } else {
                 Button("Done", action: actions.done).buttonStyle(KeyStyle())

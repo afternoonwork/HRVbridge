@@ -111,8 +111,10 @@ deliberately with **no licence**: do not add one. Public release planned
    Dial (decided by Paul 21 Oct 2026): the hand sweeps with the wall clock
    like a seconds hand (one turn over settling, one over the measurement,
    parked at 12 when done); accepted beats make the orange ring "breathe"
-   (opacity about 55% to 100% over each RR interval) while measuring only.
-   Reduce Motion / Remove animations: no breathing, hand updated once a second.
+   (opacity about 35% to 100% over each RR interval) while measuring only.
+   Both also run with Reduce Motion (Paul, 21 Oct 2026): the hand sweeps
+   smoothly every frame, and the breathing is an opacity change only.
+   The heart rate window is orange with white text.
 3. Measurement: 60 s wall-clock, collect all RR.
 4. Keep screen on (`FLAG_KEEP_SCREEN_ON`), foreground only. No background BLE.
 
@@ -229,13 +231,14 @@ Draft connect-screen copy:
     `ScreenshotTest` renders every state into the `android-screenshots`
     CI artifact.
 - Retry failed uploads on next app open (WorkManager only if really needed).
-  Done: on app open (and right after saving a key) the newest pending
-  session per date is sent in one `PUT wellness-bulk`
-  (`SessionStore.retryBatch()`), so an older session never overwrites a
-  newer value of the same day. Nothing uploads automatically: the result
-  screen has "Upload to Intervals.icu" ("Upload anyway" when unreliable).
-  Pending = never uploaded, with a result, and the user tapped one of those
-  (`uploadOverride` true in the session JSON).
+  Done: on app open (and right after saving a key) the newest submitted
+  session per date is sent, if not yet uploaded, in one `PUT wellness-bulk`
+  (`SessionStore.retryBatch()`), so an older submission never overwrites a
+  newer one of the same day, and an unsubmitted newer session does not block
+  an older submitted one. Nothing uploads automatically (Paul, 21 Oct
+  2026): the result screen shows the values and "Upload to Intervals.icu"
+  ("Upload anyway" if unreliable). Pending = result, never uploaded, and the
+  user tapped one of those (stored as `uploadOverride`, same JSON key).
 
 - Release signing (upload key): `app/build.gradle.kts` reads
   `HRVBRIDGE_KEYSTORE_PATH`, `HRVBRIDGE_KEYSTORE_PASSWORD`,
@@ -373,7 +376,7 @@ Draft connect-screen copy:
 ## Morning questions (optional, decided by Paul 21 Oct 2026)
 
 - Off by default; Settings switch "Morning questions". When on, a result
-  that would upload (reliable, or "Upload anyway") waits on a questions
+  the user submits ("Upload to Intervals.icu" or "Upload anyway") waits on a questions
   page; "Upload" sends values and answers together, "Skip" sends values
   only. Answering without a measurement: skipped (not trivial).
 - Every question is optional; unanswered ones are not sent (PUT only
