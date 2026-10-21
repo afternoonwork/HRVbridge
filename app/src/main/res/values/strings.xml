@@ -5,15 +5,15 @@
 
     <!-- Main screen: strap -->
     <string name="no_strap">No strap connected</string>
-    <string name="no_strap_hint">Put the strap on and moisten the electrodes. Close Polar Flow and other apps that may be connected to it.</string>
+    <string name="no_strap_hint">Put the strap on and moisten the electrodes. Close other apps that connect to your heart rate monitor.</string>
     <string name="searching">Looking for heart rate straps…</string>
     <string name="connecting_to">Connecting to %1$s…</string>
     <string name="connected">connected</string>
     <string name="dbm">%1$d dBm</string>
-    <string name="could_not_connect">Couldn\'t connect to %1$s. Check the strap is on and the electrodes are moist, and close other apps that may be connected to it.</string>
+    <string name="could_not_connect">Couldn\'t connect to %1$s. Check the strap is on and the electrodes are moist. Close other apps that connect to your heart rate monitor.</string>
     <string name="bluetooth_off">Bluetooth is off. Turn it on, then try again.</string>
     <string name="bluetooth_not_allowed">Bluetooth access is not allowed. HRV Bridge needs it to find your strap. Allow it in Settings.</string>
-    <string name="lie_still">Lie still, then start.</string>
+    <string name="lie_still">Sit still, then start.</string>
     <string name="plan_settling">%1$d s settling, then a 60 s measurement.</string>
     <string name="plan_no_settling">No settling time, then a 60 s measurement.</string>
     <string name="cancelled_in_background">The measurement was cancelled because the app left the screen. Keep it open while measuring.</string>
@@ -22,7 +22,7 @@
     <string name="phase_checking">Checking signal</string>
     <string name="phase_checking_detail">Making sure the strap sends beat-to-beat data.</string>
     <string name="phase_settling">Settling</string>
-    <string name="phase_settling_detail">Lie still and breathe normally.</string>
+    <string name="phase_settling_detail">Sit still and breathe normally.</string>
     <string name="phase_recording">Recording</string>
     <plurals name="beats_recorded">
         <item quantity="one">%1$d beat recorded</item>
@@ -107,7 +107,7 @@
     <string name="settings">Settings</string>
     <string name="settings_measurement">Measurement</string>
     <string name="settling_time">Settling time</string>
-    <string name="settling_footer">Time to lie still before the 60 s measurement. Beats from this time are not used.</string>
+    <string name="settling_footer">Time to sit still before the 60 s measurement. Beats from this time are not used.</string>
     <string name="settings_intervals">Intervals.icu</string>
     <string name="connected_value">Connected</string>
     <string name="disconnect">Disconnect</string>

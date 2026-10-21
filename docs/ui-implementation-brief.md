@@ -60,22 +60,22 @@ Three screens. Everything from finding the strap to the uploaded result happens 
 
 1. **Connect** (shown first while no API key is saved): title "Connect to Intervals.icu", the sentence "Paste your personal API key. You find it in Intervals.icu under Settings, Developer Settings.", labelled field "API key", "Stored on this phone only and sent only to Intervals.icu.", the notice "Keep your morning values intact" with the full CLAUDE.md text, key "Save key" (disabled while empty). States: key rejected (field border 2 pt ink, warning line "Intervals.icu did not accept this key. Check that you copied all of it, then save again."), connected (card "Connected", key "Continue").
 2. **Main** (nav title "HRV Bridge", sliders icon right, label "Settings" for accessibility, hidden while measuring).
-3. **Settings** (pushed): Measurement: Settling time (0, 30, 60, 90 s; footer "Time to lie still before the 60 s measurement. Beats from this time are not used."). Intervals.icu: API key Connected, Disconnect (destructive). Data: Delete all measurements (destructive, confirmation with the existing text), Debug log (pushed, Share). Footer "Measurements are stored on this phone only."
+3. **Settings** (pushed): Measurement: Settling time (0, 30, 60, 90 s; footer "Time to sit still before the 60 s measurement. Beats from this time are not used."). Intervals.icu: API key Connected, Disconnect (destructive). Data: Delete all measurements (destructive, confirmation with the existing text), Debug log (pushed, Share). Footer "Measurements are stored on this phone only."
 
 **Main screen states**
 
 | State | Above the dial | Dial | Below the dial | Key |
 | --- | --- | --- | --- | --- |
-| No strap | hollow dot, "No strap connected" | faint, "no strap", no hand | notice "Put the strap on and moisten the electrodes. Close Polar Flow and other apps that may be connected to it." | Find strap |
+| No strap | hollow dot, "No strap connected" | faint, "no strap", no hand | notice "Put the strap on and moisten the electrodes. Close other apps that connect to your heart rate monitor." | Find strap |
 | Searching | spinner, "Looking for heart rate straps…" | faint, "searching" | list of found straps (name, dBm), tap to connect | none |
 | Connecting | spinner, "Connecting to <name>…" | faint, "connecting" |  | none |
-| Connected | ink dot, name (bold), "connected" | live HR, ink hand at 12 | "Lie still, then start." and "<n> s settling, then a 60 s measurement." | Start (orange dot) |
-| Couldn't connect (15 s) | hollow dot | faint, "no strap" | warning "Couldn't connect to <name>. Check the strap is on and the electrodes are moist, and close other apps that may be connected to it." | Try again |
+| Connected | ink dot, name (bold), "connected" | live HR, ink hand at 12 | "Sit still, then start." and "<n> s settling, then a 60 s measurement." | Start (orange dot) |
+| Couldn't connect (15 s) | hollow dot | faint, "no strap" | warning "Couldn't connect to <name>. Check the strap is on and the electrodes are moist. Close other apps that connect to your heart rate monitor." | Try again |
 | Bluetooth off | hollow dot | faint, "Bluetooth off" | warning "Bluetooth is off. Turn it on in Control Centre or Settings, then try again." | Try again |
 | Not allowed | hollow dot | faint, "no access" | warning "Bluetooth access is not allowed. HRV Bridge needs it to find your strap. Allow it in Settings." | Open Settings |
 | Signal check (10 s) | steps: check | live HR, hand at 12 | "Checking signal", countdown, "Making sure the strap sends beat-to-beat data." | Stop |
 | Poor contact | steps | window "poor contact" | phase and countdown inline, warning "Poor contact. Moisten the electrodes and make sure the strap fits snugly." | Stop |
-| Settling | steps: settle | ink hand, grey band | "Settling", countdown, "Lie still and breathe normally." | Stop |
+| Settling | steps: settle | ink hand, grey band | "Settling", countdown, "Sit still and breathe normally." | Stop |
 | Measuring | steps: measure (orange) | orange hand and band | orange dot "Recording", countdown, "<n> beats recorded" | Stop |
 | Failure (no RR, no data, implausible, disconnected) | steps: check hollow | live HR or faint | warning with the existing CLAUDE.md / FailReason sentence | Done (no RR) or Try again |
 | Done, uploading | steps: upload hollow | full orange ring, resting HR, hand at 12 | rMSSD, SDNN, "<accepted> of <total> beats used", spinner "Uploading to Intervals.icu…" | Done |

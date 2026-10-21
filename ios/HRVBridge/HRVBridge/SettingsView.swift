@@ -16,7 +16,7 @@ struct SettingsView: View {
             } header: {
                 Text("Measurement")
             } footer: {
-                Text("Time to lie still before the 60 s measurement. Beats from this time are not used.")
+                Text("Time to sit still before the 60 s measurement. Beats from this time are not used.")
             }
 
             Section {
