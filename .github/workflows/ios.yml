@@ -7,12 +7,14 @@ on:
     paths:
       - "ios/**"
       - "core/src/test/resources/test-vectors.json"
+      - "core/src/test/resources/recordings/**"
       - ".github/workflows/ios.yml"
   push:
     branches: [main]
     paths:
       - "ios/**"
       - "core/src/test/resources/test-vectors.json"
+      - "core/src/test/resources/recordings/**"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
 
