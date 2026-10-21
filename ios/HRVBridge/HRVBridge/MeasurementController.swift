@@ -208,10 +208,10 @@ final class MeasurementController {
         cancelledInBackground = true
     }
 
-    /// User override for an unreliable measurement.
-    func uploadAnyway() {
+    /// The user tapped Upload (or "Upload anyway"): only now is the session pending.
+    func submitUpload() {
         guard var r = record, r.result != nil, upload == .none else { return }
-        log.add("UPLOAD", "user override for unreliable measurement")
+        log.add("UPLOAD", r.result?.reliable == true ? "user submitted" : "user override for unreliable measurement")
         r.uploadOverride = true
         record = r
         save(r)
@@ -292,7 +292,6 @@ final class MeasurementController {
             record = r
             save(r)
             log.add("RESULT", result.map { "\($0)" } ?? "no result")
-            if result?.reliable == true { uploadOrAsk(r) }
         case .failed:
             stopTicking()
         default:

@@ -36,7 +36,7 @@ struct HeartDial: View {
     let model: DialModel
     var accessibilityText: String = ""
     /// Set while measuring: on each accepted beat the orange ring eases up to full
-    /// opacity and fades back to about 55% over that beat's RR interval.
+    /// opacity and fades back to about 35% over that beat's RR interval.
     var pulse: BeatPulse?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
@@ -49,8 +49,7 @@ struct HeartDial: View {
             ZStack {
                 face(r)
                 band(r)
-                Canvas { ctx, size in drawTicks(ctx, size: size, r: r) }
-                    .opacity(model.faint ? 0.35 : 1)
+                DialTicks(r: r).opacity(model.faint ? 0.35 : 1)
                 window(r)
                 hand(r)
             }
@@ -90,44 +89,30 @@ struct HeartDial: View {
         }
     }
 
-    /// Only the orange measuring ring breathes, and not with Reduce Motion.
-    private var breathing: Bool { model.band == .measure && !reduceMotion && pulse != nil }
+    /// Only the orange measuring ring breathes. Opacity only, so also with Reduce Motion.
+    private var breathing: Bool { model.band == .measure && pulse != nil }
 
-    private func drawTicks(_ ctx: GraphicsContext, size: CGSize, r: CGFloat) {
-        let c = CGPoint(x: size.width / 2, y: size.height / 2)
-        for i in 0..<60 {
-            let major = i % 5 == 0
-            let a = CGFloat(i) / 60 * 2 * CGFloat.pi
-            let from = (major ? 0.818 : 0.856) * r, to = 0.917 * r
-            var p = Path()
-            p.move(to: point(c, a, from))
-            p.addLine(to: point(c, a, to))
-            ctx.stroke(p, with: .color(Theme.ink), lineWidth: major ? 2.5 : 1)
-            if major {
-                let n = i == 0 ? 60 : i
-                ctx.draw(Text("\(n)").font(.dialNumeral).foregroundStyle(Theme.ink2),
-                         at: point(c, a, 0.712 * r), anchor: .center)
-            }
-        }
-    }
-
+    /// Orange with white text while a strap is connected; the faint "no strap" states keep
+    /// the plain window.
     private func window(_ r: CGFloat) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 10).fill(Theme.bg)
+        let filled = !model.faint && model.window != .heartRate(nil)
+        return ZStack {
+            RoundedRectangle(cornerRadius: 10).fill(filled ? Theme.accentFill : Theme.bg)
             RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(LinearGradient(colors: [.black.opacity(scheme == .dark ? 0.4 : 0.08), .clear],
+                .strokeBorder(LinearGradient(colors: [.black.opacity(scheme == .dark ? 0.4 : filled ? 0.2 : 0.08), .clear],
                                              startPoint: .top, endPoint: .bottom), lineWidth: 2)
-            RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line, lineWidth: 1)
+            if !filled { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line, lineWidth: 1) }
             switch model.window {
             case let .heartRate(hr):
                 Text(hr.map(String.init) ?? "")
                     .font(.system(size: hrSize, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(Theme.ink)
+                    .foregroundStyle(filled ? .white : Theme.ink)
                     .minimumScaleFactor(0.5)
             case let .label(text):
+                // On orange: 14 pt bold counts as large text, so white on #E2561C (3.8:1) passes.
                 Text(text)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.ink2)
+                    .font(filled ? .system(size: 14, weight: .bold) : .footnote.weight(.semibold))
+                    .foregroundStyle(filled ? .white : Theme.ink2)
                     .minimumScaleFactor(0.6)
             }
         }
@@ -154,6 +139,33 @@ struct HeartDial: View {
         }
     }
 
+}
+
+/// The 60 ticks and numerals. Its own view with only `r` as input, so SwiftUI skips
+/// redrawing it while the hand sweeps every frame.
+private struct DialTicks: View, Equatable {
+    let r: CGFloat
+
+    var body: some View {
+        Canvas { ctx, size in
+            let c = CGPoint(x: size.width / 2, y: size.height / 2)
+            for i in 0..<60 {
+                let major = i % 5 == 0
+                let a = CGFloat(i) / 60 * 2 * CGFloat.pi
+                let from = (major ? 0.818 : 0.856) * r, to = 0.917 * r
+                var p = Path()
+                p.move(to: point(c, a, from))
+                p.addLine(to: point(c, a, to))
+                ctx.stroke(p, with: .color(Theme.ink), lineWidth: major ? 2.5 : 1)
+                if major {
+                    let n = i == 0 ? 60 : i
+                    ctx.draw(Text("\(n)").font(.dialNumeral).foregroundStyle(Theme.ink2),
+                             at: point(c, a, 0.712 * r), anchor: .center)
+                }
+            }
+        }
+    }
+
     private func point(_ c: CGPoint, _ angle: CGFloat, _ radius: CGFloat) -> CGPoint {
         CGPoint(x: c.x + radius * sin(angle), y: c.y - radius * cos(angle))
     }
@@ -168,12 +180,12 @@ private struct Breathing: ViewModifier {
         if let pulse {
             // RR is on the session clock; the simulated strap may run it faster.
             let beat = max(0.3, pulse.rrMs / 1000 / Clock.currentSpeed)
-            content.keyframeAnimator(initialValue: 0.55, trigger: pulse.id) { view, opacity in
+            content.keyframeAnimator(initialValue: 0.35, trigger: pulse.id) { view, opacity in
                 view.opacity(opacity)
             } keyframes: { _ in
                 KeyframeTrack {
                     CubicKeyframe(1.0, duration: beat * 0.25)
-                    CubicKeyframe(0.55, duration: beat * 0.75)
+                    CubicKeyframe(0.35, duration: beat * 0.75)
                 }
             }
         } else {

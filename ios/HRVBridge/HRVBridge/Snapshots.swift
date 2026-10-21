@@ -41,6 +41,7 @@ enum Snapshots {
                                      handAngle: 504, strapConnected: true),
         "failed-no-rr": MainScreenState(phase: .failed(.noRR), heartRate: 61, strapConnected: true),
         "failed-disconnected": MainScreenState(phase: .failed(.disconnected)),
+        "result": MainScreenState(phase: result(upload: .none), handAngle: 720, strapConnected: true),
         "uploading": MainScreenState(phase: result(upload: .inProgress), handAngle: 720, strapConnected: true),
         "uploaded": MainScreenState(phase: result(upload: .uploaded), handAngle: 720, strapConnected: true),
         "unreliable": MainScreenState(phase: result(reliable: false, upload: .none), handAngle: 720, strapConnected: true),
