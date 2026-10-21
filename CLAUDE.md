@@ -37,6 +37,7 @@ outside the app.
 - iOS: development team `3AD9GLQSQH` is Paul's free Personal Team; replace
   it with the paid team before TestFlight / App Store.
 - No `locked: true` on wellness writes (decided against, see Intervals section).
+- Portrait only on both platforms (Paul, 21 Oct 2026); iOS is iPhone-only (runs on iPad in compatibility mode).
 
 ## Stack (decided)
 

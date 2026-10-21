@@ -9,6 +9,7 @@ Replace the plain form UI on iOS, then Android, with the designed UI: one main s
 - **Sources of truth:** CLAUDE.md for behaviour; the [SignON design system](https://claude.ai/artifact/5wmnS8BGBsg7cZVhkCjG4L) for tokens, components, motion and screen states; the [design canvas](https://claude.ai/artifact/NxhmJseNha3c6vjGEQEbwm), page "App flow", for every screen. If you cannot open the links, this brief is self-contained.
 - **Precedence:** design system over this brief; Apple Human Interface Guidelines and Material Design 3 over both. Never bend a platform convention.
 - **iOS first:** `ios/HRVBridge` (SwiftUI, iOS 17 target, Xcode 26.3, iPhone SE 2020 on iOS 26.6.1 is the test device). Then Android: `app/` (Compose, BOM 2026.06.01).
+- **Portrait only** on both platforms (Paul, 21 Oct 2026); no landscape layouts. iOS is iPhone-only (runs on iPad in compatibility mode). Android 16+ ignores the lock on large screens (600 dp and wider); phones stay portrait.
 - **No new libraries.** Draw the dial with SwiftUI `Canvas` and Compose `Canvas`/`DrawScope`; animate with built-in APIs.
 - **Out of scope:** `:core` and `HRVCore` maths, new features, charts or history. Debug-only tools (simulated strap, raw recording) keep plain lists in debug builds.
 - **Branches:** `ios/ui-redesign` and `android/ui-redesign`, one PR each, per the repo rules in CLAUDE.md.
