@@ -17,7 +17,7 @@ data class SessionRecord(
     val result: HrvResult?,
     val malformedPackets: Int,
     val uploadedAt: Instant?,
-    /** The user chose "Upload anyway" for an unreliable result; retried like a reliable one. */
+    /** The user tapped "Upload" (or "Upload anyway"); only such sessions are uploaded or retried. */
     val uploadOverride: Boolean = false,
     /** Morning questions answered for this measurement; retries send them too. */
     val answers: ReadinessAnswers? = null,

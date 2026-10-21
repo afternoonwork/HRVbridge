@@ -49,10 +49,11 @@ class RetryTest {
     @After
     fun stop() = server.stop(0)
 
-    private fun session(start: String, beats: Int = 50, uploadedAt: Instant? = null): SessionRecord {
+    /** [submitted]: the user tapped "Upload" (or "Upload anyway") for it. */
+    private fun session(start: String, beats: Int = 50, uploadedAt: Instant? = null, submitted: Boolean = true): SessionRecord {
         val s = ArtefactFilter.filter(List(beats) { if (it % 2 == 0) 1000.0 else 1020.0 })
         return SessionRecord(Instant.parse(start), LocalDate.parse(start.take(10)), SessionConfig(), s,
-            HrvMetrics.compute(s), 0, uploadedAt)
+            HrvMetrics.compute(s), 0, uploadedAt, uploadOverride = submitted)
     }
 
     private fun connected() = testCredentialStore(app, keys).also { it.save(Credential.ApiKey("abc123")) }
@@ -104,9 +105,11 @@ class RetryTest {
     }
 
     @Test
-    fun unreliableWithoutOverrideIsNotRetried() {
-        store.save(session("2026-10-19T05:30:00Z", beats = 10))
+    fun sessionsTheUserDidNotSubmitAreNotRetried() {
+        store.save(session("2026-10-18T05:30:00Z", submitted = false))
+        store.save(session("2026-10-19T05:30:00Z", beats = 10, submitted = false))
         assertEquals(RetryStatus.None, open().retry)
+        assertEquals(0, synchronized(requests) { requests.size })
     }
 
     @Test

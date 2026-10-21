@@ -77,7 +77,8 @@ Three screens. Everything from finding the strap to the uploaded result happens 
 | Settling (its first 10 s also run the signal check) | steps: settle | ink hand, grey band | "Settling", countdown, "Sit still and breathe normally." | Stop |
 | Measuring | steps: measure (orange) | orange hand and band | orange dot "Recording", countdown, "<n> beats recorded" | Stop |
 | Failure (no RR, no data, implausible, disconnected) | steps: current step hollow | live HR or faint | warning with the existing CLAUDE.md / FailReason sentence | Done (no RR) or Try again |
-| Done, uploading | steps: upload hollow | full orange ring, resting HR, hand at 12 | rMSSD, SDNN, "<accepted> of <total> beats used", spinner "Uploading to Intervals.icu…" | Done |
+| Done (nothing uploads automatically) | steps: upload hollow | full orange ring, resting HR, hand at 12 | rMSSD, SDNN, "<accepted> of <total> beats used" | Upload to Intervals.icu; text key "Done" |
+| Done, uploading (after "Upload to Intervals.icu", or the questions page if on) | steps: upload hollow | full orange ring, resting HR, hand at 12 | rMSSD, SDNN, "<accepted> of <total> beats used", spinner "Uploading to Intervals.icu…" | Done |
 | Uploaded | steps: upload orange | full orange ring | orange dot "Uploaded to Intervals.icu" + tick | Done |
 | Unreliable | steps: upload hollow | full grey ring | values in ink-2, warning "Measurement unreliable, please repeat. <n> of <total> beats were discarded." | Repeat; text key "Upload anyway" |
 | Not enough beats | steps: upload hollow | full grey ring, no values | warning "Not enough beats to calculate results. Please repeat." | Repeat |
@@ -111,19 +112,20 @@ Build the dial as one reusable view (`HeartDial` in SwiftUI, `HeartDial` composa
 
 - The hand sweeps continuously like a mechanical watch's seconds hand, driven by the wall clock: one revolution over the settling period, one over the 60 s measurement, parked at 12 when done. The angle is cumulative: settling 0 to 360, measuring 360 to 720, done 720. With settling 0 s there is no first turn.
 - The band runs from 12 to the hand within the current turn (it follows the hand). Done, reliable: full accent ring. Unreliable or not enough beats: full grey ring.
-- Heartbeats are shown by the orange ring "breathing" in time with the heart, not by the hand: on each accepted beat the ring's opacity eases up and fades back down over that beat's RR interval (smooth, never on/off; roughly 55% to 100%). Only while measuring; settling and done states are static.
+- Heartbeats are shown by the orange ring "breathing" in time with the heart, not by the hand: on each accepted beat the ring's opacity eases up and fades back down over that beat's RR interval (smooth, never on/off; 35% to 100%). Only while measuring; settling and done states are static.
 - Hand and hub switch from ink to accent as the hand crosses 12 into measuring.
 - The window updates on every strap packet (about 1 Hz), without animation.
+- The window is filled with orange #E2561C (the light theme accent) in both themes, with white text and no border; "poor contact" is 14 bold so it counts as large text (white on #E2561C is about 3.6:1).
 
 The measurement controller exposes the running phase's start and length on its clock (for the hand) and a pulse per accepted beat with its RR (for the ring). The per-beat hand and the latest-beat timestamp are gone.
 
 ## Motion and haptics
 
 - **Hand:** a continuous sweep with the wall clock, redrawn every frame (SwiftUI `TimelineView(.animation)`, Compose `withFrameMillis`).
-- **Breathing ring:** per accepted beat, opacity up over about a quarter of the RR interval, then a smooth fade back over the rest (iOS `keyframeAnimator`, Android `Animatable`).
+- **Breathing ring:** per accepted beat, opacity from 35% up to 100% over about a quarter of the RR interval, then a smooth fade back over the rest (iOS `keyframeAnimator`, Android driven by `withFrameMillis`).
 - **Colour change** into measuring: 200 ms cross-fade of hand and hub.
 - **Keys:** press scales to 0.98 and drops the outer shadow in 90 ms. Use a custom `ButtonStyle` on iOS and `Button` / `OutlinedButton` / `TextButton` with a pill shape on Android, so pressed states and accessibility come from the system.
-- **Reduce Motion** (iOS) / **Remove animations** (Android): no breathing; the hand still moves (it carries information) but without smoothing, updated once a second; colours switch instantly. Spinners stay system spinners.
+- **Reduce Motion** (iOS) / **Remove animations** (Android): the hand still sweeps every frame (it carries information) and the ring still breathes 35% to 100% (opacity only, no movement); colours switch instantly. Spinners stay system spinners.
 - **Screen:** keep it on while measuring (`isIdleTimerDisabled`, `FLAG_KEEP_SCREEN_ON`); foreground only, as today.
 
 | Moment | iOS `.sensoryFeedback` | Android `performHapticFeedback` |
@@ -183,7 +185,9 @@ The measurement controller exposes the running phase's start and length on its c
 - [ ] Every state in the Screens and states table is reachable and matches the canvas on the iPhone SE (375 x 667) without scrolling during a measurement
 - [ ] Light and dark both checked; no pure white or black backgrounds
 - [ ] Hand sweeps with the wall clock, never moves backwards, crosses 12 into recording; the orange ring breathes once per accepted beat while measuring
-- [ ] Reduce Motion / Remove animations removes easing
+- [ ] Reduce Motion / Remove animations switches colours instantly; the hand still updates every frame and the ring still breathes
+- [ ] Nothing uploads automatically: the result shows "Upload to Intervals.icu" and "Done" ("Repeat" and "Upload anyway" when unreliable)
+- [ ] Dial window orange #E2561C with white text in light and dark; "poor contact" 14 bold fits without ellipsis
 - [ ] Haptics fire only at the listed moments
 - [ ] VoiceOver and TalkBack read the dial and steps as specified
 - [ ] Destructive actions use the platform's destructive role

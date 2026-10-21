@@ -2,7 +2,6 @@ package com.placeholder.hrvbridge.ui
 
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -20,12 +19,16 @@ import androidx.compose.runtime.LaunchedEffect
 import com.placeholder.hrvbridge.BeatPulse
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +42,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
@@ -94,6 +98,13 @@ fun animationsOff(): Boolean {
     }
 }
 
+/** Ring opacity over one beat ([f] 0 to 1): up from 35% to 100% in the first quarter, back down over the rest. */
+internal fun breath(f: Float): Float = if (f < 0.25f) {
+    0.35f + 0.65f * FastOutSlowInEasing.transform(f / 0.25f)
+} else {
+    1f - 0.65f * FastOutSlowInEasing.transform((f - 0.25f) / 0.75f)
+}
+
 /** The heart rate dial, drawn in code. */
 @Composable
 fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: BeatPulse? = null,
@@ -103,18 +114,22 @@ fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: 
     val angle = model.handAngle.toFloat()
     val band = model.bandAngle.toFloat()
     // Breathing: on each accepted beat the orange ring eases up to full opacity and fades
-    // back to about 55% over that beat's RR interval. Only while measuring, never with
-    // Remove animations; otherwise fully opaque.
-    val breathing = model.band == DialModel.Band.MEASURE && pulse != null && pulse.id > 0 && !animationsOff()
-    val ringAlpha = remember { Animatable(1f) }
+    // back to 35% over that beat's RR interval. Only while measuring; otherwise fully
+    // opaque. Opacity only, so it also runs with Remove animations: driven by the frame
+    // clock, because Compose animations finish instantly at animator scale 0.
+    val breathing = model.band == DialModel.Band.MEASURE && pulse != null && pulse.id > 0
+    var ringAlpha by remember { mutableFloatStateOf(1f) }
     LaunchedEffect(pulse?.id, breathing) {
         if (!breathing || pulse == null) {
-            ringAlpha.snapTo(1f)
+            ringAlpha = 1f
             return@LaunchedEffect
         }
-        val beat = pulse.rrMs.toInt().coerceAtLeast(300)
-        ringAlpha.animateTo(1f, tween(beat / 4, easing = FastOutSlowInEasing))
-        ringAlpha.animateTo(0.55f, tween(beat * 3 / 4, easing = FastOutSlowInEasing))
+        val beat = pulse.rrMs.coerceAtLeast(300.0)
+        val start = withFrameMillis { it }
+        do {
+            val f = ((withFrameMillis { it } - start) / beat).toFloat().coerceIn(0f, 1f)
+            ringAlpha = breath(f)
+        } while (f < 1f)
     }
     val handColor by animateColorAsState(
         if (model.hand == DialModel.Hand.ACCENT) c.accent else c.ink,
@@ -138,6 +153,23 @@ fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: 
                 .background(c.surface, androidx.compose.foundation.shape.CircleShape)
                 .border(1.dp, c.line, androidx.compose.foundation.shape.CircleShape),
         )
+        // Band: 0.932 R to 0.970 R from 12 clockwise, butt ends. Its own canvas, so the
+        // per-frame band and breathing do not redraw the ticks and numerals.
+        if (model.band != DialModel.Band.NONE && band > 0f) {
+            Canvas(Modifier.size(size)) {
+                val rp = this.size.minDimension / 2
+                val centre = Offset(this.size.width / 2, this.size.height / 2)
+                val mid = rp * (0.932f + 0.970f) / 2
+                val w = rp * (0.970f - 0.932f)
+                drawArc(
+                    color = if (model.band == DialModel.Band.MEASURE) c.accent.copy(alpha = ringAlpha) else c.ink2.copy(alpha = 0.45f),
+                    startAngle = -90f, sweepAngle = min(band, 360f), useCenter = false,
+                    topLeft = Offset(centre.x - mid, centre.y - mid), size = Size(mid * 2, mid * 2),
+                    style = Stroke(width = w, cap = StrokeCap.Butt),
+                )
+            }
+        }
+        val tickAlpha = if (model.faint) 0.35f else 1f
         Canvas(Modifier.size(size)) {
             val rp = this.size.minDimension / 2
             val centre = Offset(this.size.width / 2, this.size.height / 2)
@@ -145,18 +177,6 @@ fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: 
                 centre.x + radius * sin(deg * PI / 180).toFloat(),
                 centre.y - radius * cos(deg * PI / 180).toFloat(),
             )
-            // Band: 0.932 R to 0.970 R from 12 clockwise, butt ends.
-            if (model.band != DialModel.Band.NONE && band > 0f) {
-                val mid = rp * (0.932f + 0.970f) / 2
-                val w = rp * (0.970f - 0.932f)
-                drawArc(
-                    color = if (model.band == DialModel.Band.MEASURE) c.accent.copy(alpha = ringAlpha.value) else c.ink2.copy(alpha = 0.45f),
-                    startAngle = -90f, sweepAngle = min(band, 360f), useCenter = false,
-                    topLeft = Offset(centre.x - mid, centre.y - mid), size = Size(mid * 2, mid * 2),
-                    style = Stroke(width = w, cap = StrokeCap.Butt),
-                )
-            }
-            val tickAlpha = if (model.faint) 0.35f else 1f
             for (i in 0 until 60) {
                 val major = i % 5 == 0
                 val deg = i * 6.0
@@ -172,20 +192,21 @@ fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: 
                 }
             }
         }
-        // Window: 96 x 46, 0.379 R below the centre.
+        // Window: 96 x 46, 0.379 R below the centre. Accent background, white text in both
+        // themes; the light theme's (darker) accent keeps white text readable in dark too.
         Box(
             Modifier
                 .offset(y = r * 0.379f)
                 .size(96.dp, 46.dp)
-                .background(c.bg, RoundedCornerShape(10.dp))
-                .border(1.dp, c.line, RoundedCornerShape(10.dp)),
+                .background(LightHrvColors.accent, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {
             if (model.label != null) {
-                Text(model.label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold,
-                     color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // 14 sp bold counts as large text, so white on the accent (about 3.6:1) is readable.
+                Text(model.label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp), fontWeight = FontWeight.Bold,
+                     color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             } else {
-                Text(model.heartRate?.toString() ?: "", style = Readout.hr, color = c.ink, maxLines = 1)
+                Text(model.heartRate?.toString() ?: "", style = Readout.hr, color = Color.White, maxLines = 1)
             }
         }
         if (model.hand != DialModel.Hand.HIDDEN) {

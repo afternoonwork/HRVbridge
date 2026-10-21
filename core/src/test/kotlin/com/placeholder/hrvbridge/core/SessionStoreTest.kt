@@ -11,10 +11,10 @@ class SessionStoreTest {
     private val dir = Files.createTempDirectory("sessions").toFile()
     private val store = SessionStore(dir)
 
-    private fun record(start: String, uploadedAt: Instant? = null): SessionRecord {
+    private fun record(start: String, uploadedAt: Instant? = null, submitted: Boolean = true): SessionRecord {
         val series = ArtefactFilter.filter(List(50) { if (it % 2 == 0) 1000.0 else 1010.0 })
         return SessionRecord(Instant.parse(start), LocalDate.parse(start.take(10)), SessionConfig(), series,
-            HrvMetrics.compute(series), 0, uploadedAt)
+            HrvMetrics.compute(series), 0, uploadedAt, uploadOverride = submitted)
     }
 
     @Test
@@ -48,6 +48,16 @@ class SessionStoreTest {
         store.save(record("2026-10-19T05:30:00Z", uploadedAt = Instant.parse("2026-10-19T05:33:00Z")))
         store.save(record("2026-10-20T05:30:00Z"))
         assertEquals(listOf(Instant.parse("2026-10-20T05:30:00Z")), store.pendingUploads().map { it.startedAt })
+    }
+
+    @Test
+    fun reliableSessionIsNotPendingUntilTheUserTapsUpload() {
+        val r = record("2026-10-20T05:30:00Z", submitted = false)
+        store.save(r)
+        assertEquals(emptyList(), store.pendingUploads())
+        assertEquals(emptyList(), store.retryBatch())
+        store.save(r.copy(uploadOverride = true))
+        assertEquals(listOf(r.startedAt), store.retryBatch().map { it.startedAt })
     }
 
     @Test
@@ -96,13 +106,23 @@ class SessionStoreTest {
     }
 
     @Test
-    fun retryBatchSkipsNewestIfItIsNotUploadable() {
-        // Newest of the day is unreliable without override: nothing for that day,
-        // and the older reliable one must not overwrite what the user saw last.
+    fun retryBatchIsNotBlockedByANewerUnsubmittedSession() {
+        // The user submitted the first measurement, then repeated and did not submit:
+        // the submitted one is still sent.
         store.save(record("2026-10-19T05:30:00Z"))
+        store.save(record("2026-10-19T05:50:00Z", submitted = false))
         val series = ArtefactFilter.filter(listOf(1000.0, 1010.0, 990.0))
         store.save(SessionRecord(Instant.parse("2026-10-19T06:10:00Z"), LocalDate.parse("2026-10-19"), SessionConfig(),
             series, HrvMetrics.compute(series), 0, null))
+        assertEquals(listOf("2026-10-19T05:30:00Z"), store.retryBatch().map { it.startedAt.toString() })
+    }
+
+    @Test
+    fun retryBatchNeverSendsAnOlderSubmittedSessionOverANewerSubmittedOne() {
+        store.save(record("2026-10-19T05:30:00Z"))
+        store.save(record("2026-10-19T06:10:00Z"))
+        assertEquals(listOf("2026-10-19T06:10:00Z"), store.retryBatch().map { it.startedAt.toString() })
+        store.save(record("2026-10-19T06:10:00Z", uploadedAt = Instant.parse("2026-10-19T06:13:00Z")))
         assertEquals(emptyList(), store.retryBatch())
     }
 

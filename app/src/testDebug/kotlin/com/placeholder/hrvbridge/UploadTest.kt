@@ -51,6 +51,12 @@ class UploadTest {
         val c = testController(app, dir, baseUrl = "http://127.0.0.1:${server.address.port}")
         assertEquals(SaveKeyResult.SAVED, c.saveApiKey("  abc123  "))
         c.start(DebugStrap.create(app, "Vector: clean 70 beats", 60))
+        idleUntil { c.session is SessionState.Finished }
+        // Nothing is sent or pending until the user taps "Upload to Intervals.icu".
+        assertEquals(UploadStatus.None, c.upload)
+        assertEquals(emptyList<Any>(), SessionStore(dir).pendingUploads())
+        synchronized(requests) { assertTrue(requests.isEmpty()) }
+        c.submitUpload()
         idleUntil { (c.upload as? UploadStatus.Done) != null }
         return c
     }
@@ -124,7 +130,7 @@ class UploadTest {
         idleUntil { c.session is SessionState.Finished }
         assertEquals(UploadStatus.None, c.upload)
         assertEquals(emptyList<Any>(), SessionStore(dir).pendingUploads())
-        c.uploadAnyway()
+        c.submitUpload()
         idleUntil { c.upload is UploadStatus.Done }
         assertTrue((c.upload as UploadStatus.Done).result is UploadResult.Failure)
         val stored = SessionStore(dir).list().single()

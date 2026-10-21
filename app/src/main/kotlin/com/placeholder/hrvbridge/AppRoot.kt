@@ -185,7 +185,7 @@ private fun MainRoute(controller: MeasurementController, openSettings: () -> Uni
                     stop = { confirmStop = true },
                     done = controller::finishMeasurement,
                     again = { controller.measureAgain { BleHeartRateSource(context) } },
-                    uploadAnyway = controller::uploadAnyway,
+                    submitUpload = controller::submitUpload,
                     submitAnswers = controller::submitAnswers,
                     turnOnBluetooth = {
                         runCatching { enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) }

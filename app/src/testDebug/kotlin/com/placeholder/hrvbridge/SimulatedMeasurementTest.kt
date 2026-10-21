@@ -31,12 +31,16 @@ class SimulatedMeasurementTest {
     }
 
     @Test
-    fun cleanVectorAtSixtyTimesSpeedUploadsAutomatically() {
+    fun cleanVectorAtSixtyTimesSpeedUploadsOnlyWhenTapped() {
         // 60 s settling (the first 10 s are the signal check) + 60 s measurement = 120 s virtual, 2 s real.
         val c = run("Vector: clean 70 beats", speed = 60, realSeconds = 3)
         val done = c.session as SessionState.Finished
         assertTrue(done.result!!.reliable)
         assertEquals(60, done.result!!.restingHr)
+        // No automatic upload, and not pending for the retry either.
+        assertEquals(UploadStatus.None, c.upload)
+        assertEquals(emptyList<Any>(), com.placeholder.hrvbridge.core.SessionStore(sessionsDir).pendingUploads())
+        c.submitUpload()
         // No credential in a debug build: dry run.
         val upload = (c.upload as UploadStatus.Done).result as UploadResult.Success
         assertTrue(upload.dryRun)
@@ -58,7 +62,7 @@ class SimulatedMeasurementTest {
         val done = c.session as? SessionState.Finished ?: error("state: ${c.session}")
         assertFalse(done.result!!.reliable)
         assertEquals(UploadStatus.None, c.upload)
-        c.uploadAnyway()
+        c.submitUpload()
         assertTrue((c.upload as UploadStatus.Done).result is UploadResult.Success)
     }
 
@@ -113,6 +117,7 @@ class SimulatedMeasurementTest {
     @Test
     fun debugLogHasSourcePacketsPhasesAndResult() {
         val c = run("Vector: clean 70 beats", speed = 60, realSeconds = 3)
+        c.submitUpload()
         val text = c.shareText()
         for (needle in listOf("SOURCE Simulated strap: Vector: clean 70 beats at 60x", "RX t=1000 16 ", "PHASE Stabilising",
             "PHASE Measuring", "PHASE Finished", "RESULT HrvResult(", "UPLOAD Success", "Session JSON:", "\"rrMs\":[")) {
@@ -135,6 +140,7 @@ class SimulatedMeasurementTest {
         assertEquals(SaveKeyResult.SAVED, c.saveApiKey("abc123"))
         c.start(DebugStrap.create(context, "Vector: clean 70 beats", 60))
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3))
+        c.submitUpload()
         idleUntil { c.upload is UploadStatus.Done }
         assertEquals(1, com.placeholder.hrvbridge.core.SessionStore(sessionsDir).list().size)
         assertTrue(c.shareText().contains("RX "))
