@@ -219,6 +219,11 @@ struct MainScreenView: View {
     @State private var topHeight: CGFloat = 0
     @State private var belowHeight: CGFloat = 0
     @State private var keysHeight: CGFloat = 0
+    /// Heights of the step indicator, the tallest readout or result, and the result keys,
+    /// measured hidden, so the dial keeps one size from Connected to the result.
+    @State private var stepHeight: CGFloat = 0
+    @State private var belowProbe: CGFloat = 0
+    @State private var keysProbe: CGFloat = 0
 
     var body: some View {
         if case .questions = state.phase {
@@ -230,12 +235,14 @@ struct MainScreenView: View {
 
     private var dialLayout: some View {
         GeometryReader { geo in
-            let spare = geo.size.height - topHeight - 8 - Space.stepsToDial - belowSpacing - belowHeight - keysHeight - 8
+            // The larger gap (result) and the reserves, so Start, phase changes and the result keep the size.
+            let spare = geo.size.height - topHeight - 8 - Space.stepsToDial - Space.dialToMetrics
+                - max(belowHeight, belowProbe) - max(keysHeight, keysProbe + 12 + Space.bottom) - 8
             let dialSize = max(160, min(HeartDial.size(forWidth: geo.size.width), spare))
             ScrollView {
                 VStack(spacing: 0) {
                     top
-                        .frame(minHeight: 28)
+                        .frame(minHeight: max(28, stepHeight))
                         .onGeometryChange(for: CGFloat.self, of: \.size.height) { topHeight = $0 }
                         .padding(.top, 8)
                     dial
@@ -249,6 +256,7 @@ struct MainScreenView: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
+            .background(alignment: .top) { probes }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 keys
                     .frame(maxWidth: .infinity)
@@ -259,6 +267,30 @@ struct MainScreenView: View {
             }
         }
         .background(Theme.bg.ignoresSafeArea())
+    }
+
+    /// Not shown: measures the views the dial must leave room for, at the content width.
+    private var probes: some View {
+        let result = { (upload: UploadStatus) in
+            MainScreenView(state: MainScreenState(phase: .result(ResultSummary(
+                restingHr: 52, rmssd: 68.4, sdnn: 61.2, accepted: 64, total: 64, reliable: true, upload: upload))))
+        }
+        return VStack(spacing: 0) {
+            StepIndicator(current: .settle)
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { stepHeight = $0 }
+            ZStack {
+                MainScreenView(state: MainScreenState(phase: .settling(secondsLeft: 60, poorContact: false))).below
+                MainScreenView(state: MainScreenState(phase: .measuring(secondsLeft: 60, beats: 60, poorContact: false))).below
+                result(.uploaded).below
+            }
+            .padding(.horizontal, Space.margin)
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { belowProbe = $0 }
+            result(.none).keys
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { keysProbe = $0 }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .hidden()
+        .accessibilityHidden(true)
     }
 
     /// While measuring the hand sweeps with the wall clock every frame, also with Reduce

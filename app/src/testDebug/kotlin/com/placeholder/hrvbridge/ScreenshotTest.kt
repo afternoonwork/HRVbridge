@@ -99,12 +99,7 @@ class ScreenshotTest {
         // Inside the real top app bar, so the height left for the content is as on a phone
         // (no status bar in Robolectric: about 24 dp more than on a device).
         for ((name, state) in states) {
-            render("$name-$suffix", dark) {
-                androidx.compose.material3.Scaffold(
-                    containerColor = hrv.bg,
-                    topBar = { com.placeholder.hrvbridge.ui.MainTopBar(!state.isMeasuring) {} },
-                ) { padding -> MainScreenContent(state, MainActions(), Modifier.padding(padding)) }
-            }
+            render("$name-$suffix", dark) { MainScreen(state) }
         }
         render("connect-$suffix", dark) { ConnectScreen("", {}, ConnectPhase.Idle, {}, {}) }
         render("connect-rejected-$suffix", dark) {
@@ -115,6 +110,21 @@ class ScreenshotTest {
         render("questions-$suffix", dark) {
             com.placeholder.hrvbridge.ui.QuestionsPage({}, initial = com.placeholder.hrvbridge.core.ReadinessAnswers.of(2, 1, 2, 1, false))
         }
+    }
+
+    /** The small Android screen (720 x 1280 at 320 dpi): the dial keeps its size on Start. */
+    @Test
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun smallScreen() {
+        for (name in listOf("connected", "settling")) render("$name-360x640-light", false) { MainScreen(states.getValue(name)) }
+    }
+
+    @Composable
+    private fun MainScreen(state: MainScreenState) {
+        androidx.compose.material3.Scaffold(
+            containerColor = hrv.bg,
+            topBar = { com.placeholder.hrvbridge.ui.MainTopBar(!state.isMeasuring) {} },
+        ) { padding -> MainScreenContent(state, MainActions(), Modifier.padding(padding)) }
     }
 
     /** Launcher icon: the adaptive icon with the device mask, then the themed (monochrome) layer. */
