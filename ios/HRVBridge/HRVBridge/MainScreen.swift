@@ -207,6 +207,12 @@ struct MainScreenView: View {
     var dialAccessibility: String?
     var actions = MainActions()
 
+    /// Measured heights of everything but the dial, so the dial can shrink to keep
+    /// warnings and keys visible on small screens (iPhone SE).
+    @State private var topHeight: CGFloat = 0
+    @State private var belowHeight: CGFloat = 0
+    @State private var keysHeight: CGFloat = 0
+
     var body: some View {
         if case .questions = state.phase {
             QuestionsPage(submit: actions.submitAnswers)
@@ -217,16 +223,19 @@ struct MainScreenView: View {
 
     private var dialLayout: some View {
         GeometryReader { geo in
-            let dialSize = HeartDial.size(forWidth: geo.size.width)
+            let spare = geo.size.height - topHeight - 8 - Space.stepsToDial - belowSpacing - belowHeight - keysHeight - 8
+            let dialSize = max(160, min(HeartDial.size(forWidth: geo.size.width), spare))
             ScrollView {
                 VStack(spacing: 0) {
                     top
                         .frame(minHeight: 28)
+                        .onGeometryChange(for: CGFloat.self, of: \.size.height) { topHeight = $0 }
                         .padding(.top, 8)
                     HeartDial(model: state.dial, accessibilityText: dialAccessibility ?? state.dialAccessibility)
                         .frame(width: dialSize, height: dialSize)
                         .padding(.top, Space.stepsToDial)
                     below
+                        .onGeometryChange(for: CGFloat.self, of: \.size.height) { belowHeight = $0 }
                         .padding(.top, belowSpacing)
                 }
                 .padding(.horizontal, Space.margin)
@@ -238,6 +247,7 @@ struct MainScreenView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.top, 12)
                     .padding(.bottom, Space.bottom)
+                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { keysHeight = $0 }
                     .background(Theme.bg)
             }
         }
@@ -385,7 +395,10 @@ struct MainScreenView: View {
                 metric("rMSSD", r.rmssd, dim: !r.reliable)
                 metric("SDNN", r.sdnn, dim: !r.reliable)
             }
-            Text("\(r.accepted) of \(r.total) beats used").font(.footnote).foregroundStyle(Theme.ink2)
+            // The unreliable warning already says how many beats were discarded.
+            if r.reliable || r.upload != .none {
+                Text("\(r.accepted) of \(r.total) beats used").font(.footnote).foregroundStyle(Theme.ink2)
+            }
             switch r.upload {
             case .inProgress:
                 StatusLine(mark: .spinner, text: "Uploading to Intervals.icu…")
