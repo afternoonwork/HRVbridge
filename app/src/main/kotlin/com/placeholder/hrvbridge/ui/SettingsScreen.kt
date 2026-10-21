@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import com.placeholder.hrvbridge.R
 
@@ -80,7 +82,7 @@ fun SettingsContent(settlingSeconds: Int, actions: SettingsActions, modifier: Mo
                 Switch(checked = actions.questionsEnabled, onCheckedChange = null)
             }
         }
-        Footer(stringResource(R.string.questions_footer))
+        Footer(questionsFooter(stringResource(R.string.questions_footer)))
 
         Header(stringResource(R.string.settings_intervals))
         Group {
@@ -181,9 +183,15 @@ private fun Header(text: String) {
 }
 
 @Composable
-private fun Footer(text: String) {
+private fun Footer(text: String) = Footer(AnnotatedString(text))
+
+@Composable
+private fun Footer(text: AnnotatedString) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = hrv.ink2, modifier = Modifier.padding(horizontal = 16.dp))
 }
+
+/** The questions footer resource holds `<b>` tags (CDATA) around the five question names. */
+internal fun questionsFooter(html: String): AnnotatedString = AnnotatedString.fromHtml(html)
 
 @Composable
 private fun Group(content: @Composable ColumnScope.() -> Unit) {
