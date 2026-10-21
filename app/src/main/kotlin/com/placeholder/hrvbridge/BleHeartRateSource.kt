@@ -25,6 +25,9 @@ import androidx.core.content.edit
 import com.placeholder.hrvbridge.core.HeartRateSource
 import java.util.UUID
 
+/** A strap seen while scanning. */
+data class FoundStrap(val address: String, val name: String, val rssi: Int)
+
 /** Runtime permissions needed to scan for and connect to the strap. */
 object BlePermissions {
     @SuppressLint("InlinedApi") // the S+ constants are only used when sdkInt >= S
@@ -58,16 +61,37 @@ class BleHeartRateSource(private val context: Context) : HeartRateSource {
     private val seen = LinkedHashMap<String, Pair<BluetoothDevice, Int>>()
     private var subscribed = false
 
+    enum class Failure { BLUETOOTH_OFF, NOT_ALLOWED, NOT_FOUND, CONNECT_TIMEOUT, OTHER }
+
+    /** Why the last attempt ended before connecting; set before onDisconnected. */
+    var failure: Failure? = null
+        private set
+    var connectingName: String? = null
+        private set
+    var connectedName: String? = null
+        private set
+
+    /** Main thread: straps seen so far, and the one being connected (null while scanning). */
+    var onScanUpdate: ((found: List<FoundStrap>, connectingTo: String?) -> Unit)? = null
+
+    /** The user picked a strap from the list. */
+    fun choose(address: String) {
+        seen[address]?.let { connect(it.first) }
+    }
+
+    private fun foundList() = seen.values.map { (d, rssi) -> FoundStrap(d.address, d.name ?: "Heart rate strap", rssi) }
+
     override fun nowMs(): Long = SystemClock.elapsedRealtime()
 
     override fun start(listener: HeartRateSource.Listener) {
         this.listener = listener
         subscribed = false
+        failure = null
         val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter
         when {
-            !BlePermissions.granted(context) -> fail("missing permissions ${BlePermissions.required()}")
+            !BlePermissions.granted(context) -> fail("missing permissions ${BlePermissions.required()}", Failure.NOT_ALLOWED)
             adapter == null -> fail("no Bluetooth adapter")
-            !adapter.isEnabled -> fail("Bluetooth is off")
+            !adapter.isEnabled -> fail("Bluetooth is off", Failure.BLUETOOTH_OFF)
             adapter.bluetoothLeScanner == null -> fail("no BLE scanner")
             else -> scan(adapter.bluetoothLeScanner)
         }
@@ -94,6 +118,7 @@ class BleHeartRateSource(private val context: Context) : HeartRateSource {
                     if (scanning !== this) return@post
                     if (d.address !in seen) event("scan found ${d.address} name=${d.name} rssi=${result.rssi}")
                     seen[d.address] = d to result.rssi
+                    onScanUpdate?.invoke(foundList(), null)
                     if (d.address == remembered) connect(d)
                 }
             }
@@ -108,7 +133,7 @@ class BleHeartRateSource(private val context: Context) : HeartRateSource {
         scanner.startScan(listOf(filter), settings, cb)
         // Remembered strap not seen quickly: take the strongest one found.
         main.postDelayed({ if (scanning != null) seen.values.maxByOrNull { it.second }?.let { connect(it.first) } }, PICK_MS)
-        main.postDelayed({ if (scanning != null) fail("no heart rate strap found in ${SCAN_TIMEOUT_MS / 1000} s") }, SCAN_TIMEOUT_MS)
+        main.postDelayed({ if (scanning != null) fail("no heart rate strap found in ${SCAN_TIMEOUT_MS / 1000} s", Failure.NOT_FOUND) }, SCAN_TIMEOUT_MS)
     }
 
     private fun stopScan() {
@@ -121,8 +146,10 @@ class BleHeartRateSource(private val context: Context) : HeartRateSource {
         if (gatt != null) return
         stopScan()
         event("connecting to ${device.address} name=${device.name}")
+        connectingName = device.name ?: "strap"
+        onScanUpdate?.invoke(foundList(), connectingName)
         gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
-        main.postDelayed({ if (listener != null && !subscribed) fail("connect timeout") }, CONNECT_TIMEOUT_MS)
+        main.postDelayed({ if (listener != null && !subscribed) fail("connect timeout", Failure.CONNECT_TIMEOUT) }, CONNECT_TIMEOUT_MS)
     }
 
     private val callback = object : BluetoothGattCallback() {
@@ -176,6 +203,7 @@ class BleHeartRateSource(private val context: Context) : HeartRateSource {
                     return@post
                 }
                 subscribed = true
+                connectedName = g.device.name ?: "Heart rate strap"
                 prefs.edit { putString(KEY_ADDRESS, g.device.address) }
                 listener?.onConnected()
             }
@@ -205,8 +233,9 @@ class BleHeartRateSource(private val context: Context) : HeartRateSource {
         listener?.onEvent(message)
     }
 
-    private fun fail(reason: String) {
+    private fun fail(reason: String, kind: Failure = Failure.OTHER) {
         val l = listener ?: return
+        failure = kind
         l.onEvent("failed: $reason")
         stop()
         l.onDisconnected()
