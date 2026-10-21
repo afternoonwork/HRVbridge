@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed icon (Android 13+): the foreground shapes in one colour, the face drawn as a ring. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="135"
+    android:viewportHeight="135">
+    <group android:translateX="17.5" android:translateY="17.5">
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="2.6"
+            android:pathData="M10,50 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="2.6"
+            android:pathData="M50,17 L50,25 M83,50 L75,50 M50,83 L50,75 M17,50 L25,50" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="1.8"
+            android:pathData="M66.5,21.42 L64,25.75 M78.58,33.5 L74.25,36 M78.58,66.5 L74.25,64 M66.5,78.58 L64,74.25 M33.5,78.58 L36,74.25 M21.42,66.5 L25.75,64 M21.42,33.5 L25.75,36 M33.5,21.42 L36,25.75" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="3.4"
+            android:pathData="M50,13.5 A36.5,36.5 0 0,1 84.72,38.72" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="2.6" android:strokeLineCap="round"
+            android:pathData="M43.34,52.16 L79.48,40.42" />
+        <path android:fillColor="#FFFFFF" android:pathData="M46.4,50 a3.6,3.6 0 1,0 7.2,0 a3.6,3.6 0 1,0 -7.2,0" />
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M50,71.4 C44.4,67.4 43.2,64.2 44.4,62.2 C45.6,60.2 48.8,60.2 50,62.6 C51.2,60.2 54.4,60.2 55.6,62.2 C56.8,64.2 55.6,67.4 50,71.4 Z" />
+    </group>
+</vector>

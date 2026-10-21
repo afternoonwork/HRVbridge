@@ -117,6 +117,21 @@ class ScreenshotTest {
         }
     }
 
+    /** Launcher icon: the adaptive icon with the device mask, then the themed (monochrome) layer. */
+    @Test
+    fun launcherIcon() {
+        val px = 432
+        val icon = activity.getDrawable(R.mipmap.ic_launcher) as android.graphics.drawable.AdaptiveIconDrawable
+        val bitmap = Bitmap.createBitmap(px * 2, px, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap).apply { drawColor(android.graphics.Color.rgb(0xE2, 0xE2, 0xDF)) }
+        icon.setBounds(0, 0, px, px)
+        icon.draw(canvas)
+        val mono = icon.monochrome!!.mutate().apply { setTint(android.graphics.Color.rgb(0x1A, 0x1A, 0x1A)) }
+        mono.setBounds(px, 0, px * 2, px)
+        mono.draw(canvas)
+        File(out, "launcher-icon.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
     // One activity for all images; each image gets a fresh ComposeView (composed on attach).
     private val activity by lazy { Robolectric.buildActivity(ComponentActivity::class.java).setup().get() }
 
