@@ -149,6 +149,18 @@ final class MeasurementController {
         startUpload(r)
     }
 
+    /// Deletes all local session files. Keeps the API key; never touches Intervals.icu.
+    /// Refused while a measurement runs.
+    func deleteAllMeasurements() -> Bool {
+        guard !isActive else { return false }
+        cancel()
+        record = nil
+        retry = .none
+        cancelledInBackground = false
+        store.deleteAll()
+        return true
+    }
+
     /// The last finished session as JSON, for the debug log share.
     var lastRecordJSON: String? {
         record.flatMap { try? $0.jsonData() }.map { String(decoding: $0, as: UTF8.self) }
