@@ -4,6 +4,8 @@ name: iOS
 # pushes to main; superseded runs are cancelled.
 on:
   pull_request:
+    # labeled: adding the "screenshots" label starts a run with screenshots.
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - "ios/**"
       - "scripts/ios-snapshots.sh"
@@ -19,13 +21,24 @@ on:
       - "core/src/test/resources/recordings/**"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
-
-concurrency:
-  group: ios-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    inputs:
+      states:
+        description: 'Screenshot states, space-separated (see scripts/ios-snapshots.sh), or "all"'
+        type: string
+        default: all
+      appearances:
+        type: choice
+        options: [both, light, dark]
+        default: both
 
 jobs:
   build:
+    # Other labels do not rebuild.
+    if: github.event.action != 'labeled' || github.event.label.name == 'screenshots'
+    # On the job, so a skipped run for another label cancels nothing.
+    concurrency:
+      group: ios-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -63,13 +76,31 @@ jobs:
           grep -E "\.swift:[0-9]+:[0-9]+: (warning|error):" xcodebuild-simulator.log | sort -u || echo "none"
           exit "${status:-0}"
 
-      # Nobody can look at the UI from the cloud: screenshot every state on an
-      # iPhone SE simulator (375 x 667) in light and dark, as an artifact.
+      # Nobody can look at the UI from the cloud: screenshot states on an iPhone
+      # SE simulator (375 x 667), as an artifact. Slow (about 15 min for all), so
+      # opt-in: manual runs, or PRs labelled "screenshots". A PR body line
+      # "snapshots: dial settling" limits the states; otherwise all are taken.
       - name: Screenshots (simulator)
-        run: scripts/ios-snapshots.sh build/DerivedData/Build/Products/Debug-iphonesimulator/HRVBridge.app build/screenshots
+        id: screenshots
+        if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'screenshots')
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          INPUT_STATES: ${{ inputs.states }}
+          INPUT_APPEARANCES: ${{ inputs.appearances }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            states="$INPUT_STATES"
+            case "$INPUT_APPEARANCES" in light|dark) appearances="$INPUT_APPEARANCES" ;; *) appearances="light dark" ;; esac
+          else
+            states=$(printf '%s\n' "$PR_BODY" | tr -d '\r' | grep -i -m 1 '^[[:space:]]*snapshots:' | sed 's/^[^:]*:[[:space:]]*//' || true)
+            appearances="light dark"
+          fi
+          echo "States: ${states:-all}; appearances: $appearances"
+          SNAPSHOT_STATES="$states" SNAPSHOT_APPEARANCES="$appearances" \
+            scripts/ios-snapshots.sh build/DerivedData/Build/Products/Debug-iphonesimulator/HRVBridge.app build/screenshots
 
       - name: Upload screenshots
-        if: always()
+        if: always() && steps.screenshots.outcome != 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: ios-screenshots
