@@ -42,6 +42,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
@@ -201,7 +202,8 @@ fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: 
             contentAlignment = Alignment.Center,
         ) {
             if (model.label != null) {
-                Text(model.label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold,
+                // 14 sp bold counts as large text, so white on the accent (about 3.6:1) is readable.
+                Text(model.label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp), fontWeight = FontWeight.Bold,
                      color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             } else {
                 Text(model.heartRate?.toString() ?: "", style = Readout.hr, color = Color.White, maxLines = 1)

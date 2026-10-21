@@ -395,7 +395,7 @@ class MeasurementController @JvmOverloads constructor(
         val done = session as? SessionState.Finished ?: return
         val r = record ?: return
         if (done.result != null && upload == UploadStatus.None) {
-            log.add("UPLOAD", if (done.result.reliable) "user tapped Upload" else "user override for unreliable measurement")
+            log.add("UPLOAD", if (done.result?.reliable == true) "user tapped Upload" else "user override for unreliable measurement")
             // Persist the submission first, so a failed upload is retried later.
             record = r.copy(uploadOverride = true).also(::save)
             uploadOrAsk(done)

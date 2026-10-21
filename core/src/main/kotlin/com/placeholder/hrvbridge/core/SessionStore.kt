@@ -29,17 +29,17 @@ class SessionStore(private val dir: File) {
             .sortedByDescending { it.startedAt }
 
     /**
-     * What to send in the bulk retry: for each date only the newest session,
-     * and only if that one is pending. An older pending session never
-     * overwrites a newer measurement of the same day. Newest date first.
+     * What to send in the bulk retry: for each date only the newest submitted
+     * session, and only if it is not uploaded yet. An older submitted session
+     * never overwrites a newer submitted one; a newer session the user did not
+     * submit does not block it. Newest date first.
      */
-    fun retryBatch(): List<SessionRecord> {
-        val all = list()
-        return all.groupBy { it.date }.values
+    fun retryBatch(): List<SessionRecord> =
+        list().filter { it.result != null && it.uploadOverride }
+            .groupBy { it.date }.values
             .map { sameDay -> sameDay.maxBy { it.startedAt } }
-            .filter { isPending(it) }
+            .filter { it.uploadedAt == null }
             .sortedByDescending { it.date }
-    }
 
     /**
      * Sessions to retry on next app open: never uploaded, with a result, and
