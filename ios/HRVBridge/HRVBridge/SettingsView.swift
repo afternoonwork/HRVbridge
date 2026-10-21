@@ -23,7 +23,7 @@ struct SettingsView: View {
                 Toggle("Morning questions", isOn: Binding(get: { model.measurement.questionsEnabled },
                                                           set: { model.measurement.setQuestionsEnabled($0) }))
             } footer: {
-                Text("After each measurement, answer optional questions on soreness, fatigue, motivation, injury and sickness. They are uploaded with your values.")
+                Text("After each measurement, answer optional questions on **soreness**, **fatigue**, **motivation**, **injury** and **sickness**. They are uploaded with your values.")
             }
 
             Section("Intervals.icu") {
