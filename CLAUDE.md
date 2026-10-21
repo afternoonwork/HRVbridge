@@ -351,6 +351,27 @@ Draft connect-screen copy:
 - GitHub Actions: on every push run `:core:test`, `:app:testDebugUnitTest` and `assembleDebug`, upload
   the debug APK as an artifact.
 
+## Morning questions (optional, decided by Paul 21 Oct 2026)
+
+- Off by default; Settings switch "Morning questions". When on, a result
+  that would upload (reliable, or "Upload anyway") waits on a questions
+  page; "Upload" sends values and answers together, "Skip" sends values
+  only. Answering without a measurement: skipped (not trivial).
+- Every question is optional; unanswered ones are not sent (PUT only
+  changes supplied fields). Native wellness fields, int 1 to 4, 1 = best,
+  with Intervals.icu's own labels in this order:
+  soreness 1 Low, 2 Avg, 3 High, 4 Extreme; fatigue 1 Low, 2 Avg, 3 High,
+  4 Extreme; motivation 1 Extreme, 2 High, 3 Avg, 4 Low; injury 1 None,
+  2 Niggle, 3 Poor, 4 Injured. Sent in the same wellness PUT and bulk retry.
+- "Sick today?" No / Yes. Yes is a calendar event, not a wellness field:
+  `POST /api/v1/athlete/0/events?upsertOnUid=true` with
+  `{"category":"SICK","start_date_local":"<date>T00:00:00","name":"Sick","uid":"hrvbridge-sick-<date>"}`,
+  sent after the wellness PUT; the per-date uid makes retries idempotent.
+  No is not sent. A session stays pending until both are sent.
+- Alcohol: skipped for now.
+- Answers live in the session record (`answers`, explicit nulls), so
+  retries include them. Tests use local servers only.
+
 ## Store decisions (Paul, 21 Oct 2026)
 
 Details in `docs/store-submission.md`.
