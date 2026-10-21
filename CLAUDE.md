@@ -267,6 +267,32 @@ Draft connect-screen copy:
   directly. Session JSON uses the same keys as Android's `SessionRecord`.
   Run on Linux with `scripts/swift-test.sh` (native toolchain from
   `cloud-setup.sh`, else the `swift:6.2-noble` Docker image).
+- App (`ios/HRVBridge`, Xcode 26 synchronised folder, so new .swift files
+  need no pbxproj edit): `HeartRateCentral` (CoreBluetooth), `RawRecorder`
+  (2 min raw notification capture, JSON via share sheet),
+  `MeasurementController` (session, storage in Application Support/sessions,
+  upload, retry), `KeychainStore`, `IntervalsClient` (URLSession). Debug
+  builds have a simulated strap (synthetic data, 1x/10x/60x). HRVCore is
+  linked as a local package (`XCLocalSwiftPackageReference ../HRVCore`).
+- CI: `.github/workflows/ios.yml` on `macos-26` with Xcode 26.3: HRVCore
+  tests, then simulator and device-SDK builds without signing.
+- Install on Paul's iPhone (free Personal Team, team id already in the
+  project). One-time: add the Apple ID in Xcode > Settings > Accounts;
+  connect the iPhone by cable and tap Trust; enable Settings > Privacy &
+  Security > Developer Mode (restart); after the first install, trust the
+  developer in Settings > General > VPN & Device Management. Then:
+  ```
+  git fetch origin && git checkout -B ios/sim-strap origin/ios/sim-strap
+  xcode-select -p   # must be Xcode 26.3, else: sudo xcode-select -s /Volumes/<SSD>/Xcode.app
+  xcrun devicectl list devices   # note the iPhone's Identifier
+  xcodebuild -project ios/HRVBridge/HRVBridge.xcodeproj -scheme HRVBridge \
+    -configuration Debug -destination 'generic/platform=iOS' \
+    -derivedDataPath build/ios -allowProvisioningUpdates build
+  xcrun devicectl device install app --device <Identifier> \
+    build/ios/Build/Products/Debug-iphoneos/HRVBridge.app
+  xcrun devicectl device process launch --device <Identifier> PM.HRVBridge
+  ```
+  The install expires after 7 days (free signing); rebuild and reinstall.
 - Rounding in Swift uses exact integer arithmetic for the second step
   (n = floor(x*1e9+0.5), then integer half up), which gives bit-identical
   results to Android's BigDecimal.
