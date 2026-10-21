@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -82,7 +83,17 @@ fun ConnectScreen(key: String, onKeyChange: (String) -> Unit, phase: ConnectPhas
                     ),
                     keyboardActions = KeyboardActions(onDone = { if (key.isNotBlank()) save() }),
                     isError = problem != null,
-                    supportingText = { Text(problem?.text?.resolve() ?: stringResource(R.string.api_key_stored)) },
+                    supportingText = {
+                        if (problem != null) {
+                            // Warnings carry an icon and words, never colour alone.
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                WarningIcon(hrv.ink, Modifier.size(16.dp))
+                                Text(problem.text.resolve())
+                            }
+                        } else {
+                            Text(stringResource(R.string.api_key_stored))
+                        }
+                    },
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = hrv.ink, unfocusedBorderColor = hrv.lineStrong,

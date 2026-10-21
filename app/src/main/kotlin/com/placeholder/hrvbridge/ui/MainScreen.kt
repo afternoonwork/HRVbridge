@@ -24,6 +24,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -224,6 +230,25 @@ class MainActions(
     val openSettings: () -> Unit = {},
 )
 
+/** The main screen's top app bar: title, and the settings icon except while measuring. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun MainTopBar(showSettings: Boolean, openSettings: () -> Unit) {
+    val label = stringResource(R.string.settings)
+    androidx.compose.material3.TopAppBar(
+        title = { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium) },
+        actions = {
+            if (showSettings) {
+                androidx.compose.material3.IconButton(
+                    onClick = openSettings,
+                    modifier = Modifier.semantics { contentDescription = label },
+                ) { SlidersIcon(hrv.ink) }
+            }
+        },
+        colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = hrv.bg, titleContentColor = hrv.ink),
+    )
+}
+
 /** The main screen body (below the top app bar). The dial stays in place. */
 @Composable
 fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Modifier = Modifier,
@@ -232,24 +257,39 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         QuestionsPage(submit = actions.submitAnswers, modifier = modifier)
         return
     }
+    // Measured heights of everything but the dial, so the dial can shrink to keep
+    // warnings and keys visible on small screens.
+    var topHeight by remember { mutableIntStateOf(0) }
+    var belowHeight by remember { mutableIntStateOf(0) }
+    var keysHeight by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
     BoxWithConstraints(modifier.fillMaxSize().background(hrv.bg)) {
-        val size = dialSize(maxWidth)
+        val gap = if (state.phase is MainPhase.Result || state.phase == MainPhase.NotEnoughBeats) {
+            Space.dialToMetrics
+        } else {
+            Space.dialToReadout - 12.dp
+        }
+        val others = with(density) { (topHeight + belowHeight + keysHeight).toDp() } + 8.dp + Space.stepsToDial + gap
+        val size = maxOf(160.dp, minOf(dialSize(maxWidth), maxHeight - others))
         Column(Modifier.fillMaxSize()) {
             Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = Space.margin),
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = Space.margin),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Box(Modifier.padding(top = 8.dp).heightIn(min = 28.dp), contentAlignment = Alignment.Center) { Top(state) }
+                Box(
+                    Modifier.padding(top = 8.dp).heightIn(min = 28.dp).onSizeChanged { topHeight = it.height },
+                    contentAlignment = Alignment.Center,
+                ) { Top(state) }
                 HeartDial(state.dial, size, Modifier.padding(top = Space.stepsToDial), jump = state.handJump,
                           description = dialDescription)
-                val gap = if (state.phase is MainPhase.Result || state.phase == MainPhase.NotEnoughBeats) {
-                    Space.dialToMetrics
-                } else {
-                    Space.dialToReadout - 12.dp
+                Box(Modifier.padding(top = gap).onSizeChanged { belowHeight = it.height }.padding(bottom = 16.dp)) {
+                    Below(state, actions)
                 }
-                Box(Modifier.padding(top = gap, bottom = 16.dp)) { Below(state, actions) }
             }
-            Box(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = Space.bottom), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.fillMaxWidth().onSizeChanged { keysHeight = it.height }.padding(top = 12.dp, bottom = Space.bottom),
+                contentAlignment = Alignment.Center,
+            ) {
                 Keys(state, actions)
             }
         }
@@ -374,7 +414,10 @@ private fun Result(state: MainScreenState, r: ResultSummary) {
             Metric("rMSSD", r.rmssd, dim = !r.reliable)
             Metric("SDNN", r.sdnn, dim = !r.reliable)
         }
-        Text(stringResource(R.string.beats_used, r.accepted, r.total), style = MaterialTheme.typography.bodySmall, color = hrv.ink2)
+        // The unreliable warning already says how many beats were discarded.
+        if (r.reliable || r.upload != ResultSummary.Upload.NONE) {
+            Text(stringResource(R.string.beats_used, r.accepted, r.total), style = MaterialTheme.typography.bodySmall, color = hrv.ink2)
+        }
         when (r.upload) {
             ResultSummary.Upload.IN_PROGRESS -> StatusLine(StatusMark.SPINNER, stringResource(R.string.uploading))
             ResultSummary.Upload.UPLOADED -> Row(verticalAlignment = Alignment.CenterVertically,

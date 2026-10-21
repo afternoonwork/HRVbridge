@@ -155,7 +155,8 @@ fun StatusLine(mark: StatusMark, text: String, bold: String? = null) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.semantics(mergeDescendants = true) {},
+        // Live region: strap status changes are announced.
+        modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) {
         StatusDot(mark)
         bold?.let { Text(it, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = hrv.ink) }
@@ -177,6 +178,8 @@ fun StepIndicator(current: Step, mark: StepMark = StepMark.INK) {
         horizontalArrangement = Arrangement.spacedBy(20.dp),
         modifier = Modifier.semantics(mergeDescendants = true) {
             contentDescription = "Step ${current.ordinal + 1} of 4: ${current.title}"
+            // Phase changes are announced.
+            liveRegion = LiveRegionMode.Polite
         },
     ) {
         for (step in Step.entries) {
