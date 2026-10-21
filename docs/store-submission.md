@@ -5,6 +5,12 @@ API key, no OAuth). Paul's decisions of 21 Oct 2026 are applied. Items
 marked **CHECK** still need a look at the live console forms, whose
 wording changes.
 
+## Store listing (Paul, 21 Oct 2026)
+
+- App name: SignON (both stores).
+- App Store subtitle (30 characters max): "Morning HRV and rHR".
+- Google Play short description (80 characters max): "Morning HRV and rHR".
+
 ## Facts the answers rest on
 
 - Measured: heart rate and RR intervals from a Bluetooth chest strap.
@@ -97,7 +103,7 @@ declares no collected data types.
   and only forwards the user's own measurements.
 - Guideline 5.1.3 (health data): the app does not use HealthKit and the
   developer collects no health data.
-- Bluetooth usage text: "HRV Bridge connects to your heart rate chest strap
+- Bluetooth usage text: "SignON connects to your heart rate chest strap
   to record your morning measurement."
 - Apps that need hardware: Apple asks for a video (filmed, not a screen
   recording) of the app on a physical device pairing with and using the
@@ -107,7 +113,7 @@ declares no collected data types.
 
 Draft text for the App Review notes field:
 
-> HRV Bridge records a 1-minute morning heart rate measurement from a
+> SignON records a 1-minute morning heart rate measurement from a
 > Bluetooth chest strap and writes resting heart rate and HRV (rMSSD,
 > SDNN) to the user's own Intervals.icu account. It is not a medical
 > device and does not use HealthKit.
@@ -136,8 +142,8 @@ Draft text for the App Review notes field:
 
 ## Paul's release checklist
 
-- Replace the placeholder app name, package ID (Android) and bundle ID and
-  team (iOS).
+- Replace the placeholder package ID (Android) and bundle ID and team
+  (iOS). The name SignON is decided.
 - Create the Android upload key (see CLAUDE.md, Android specifics).
 - Publish the privacy policy and use its URL in both stores.
 - Create a throwaway Intervals.icu account and API key for App Review.

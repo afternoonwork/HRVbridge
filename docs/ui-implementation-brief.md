@@ -1,4 +1,4 @@
-# HRV Bridge UI implementation brief
+# SignON UI implementation brief
 
 Oct 21, 2026 · Paul Müller (copied from the claude.ai project "HRV app")
 
@@ -6,7 +6,7 @@ Oct 21, 2026 · Paul Müller (copied from the claude.ai project "HRV app")
 
 Replace the plain form UI on iOS, then Android, with the designed UI: one main screen built around a heart rate dial, a connect screen and a settings screen. Behaviour stays as CLAUDE.md specifies, apart from the small changes in Order of work.
 
-- **Sources of truth:** CLAUDE.md for behaviour; the [HRV Bridge design system](https://claude.ai/artifact/5wmnS8BGBsg7cZVhkCjG4L) for tokens, components, motion and screen states; the [design canvas](https://claude.ai/artifact/NxhmJseNha3c6vjGEQEbwm), page "App flow", for every screen. If you cannot open the links, this brief is self-contained.
+- **Sources of truth:** CLAUDE.md for behaviour; the [SignON design system](https://claude.ai/artifact/5wmnS8BGBsg7cZVhkCjG4L) for tokens, components, motion and screen states; the [design canvas](https://claude.ai/artifact/NxhmJseNha3c6vjGEQEbwm), page "App flow", for every screen. If you cannot open the links, this brief is self-contained.
 - **Precedence:** design system over this brief; Apple Human Interface Guidelines and Material Design 3 over both. Never bend a platform convention.
 - **iOS first:** `ios/HRVBridge` (SwiftUI, iOS 17 target, Xcode 26.3, iPhone SE 2020 on iOS 26.6.1 is the test device). Then Android: `app/` (Compose, BOM 2026.06.01).
 - **No new libraries.** Draw the dial with SwiftUI `Canvas` and Compose `Canvas`/`DrawScope`; animate with built-in APIs.
@@ -59,7 +59,7 @@ Define these once per platform (an asset catalogue colour set or a `Theme` enum 
 Three screens. Everything from finding the strap to the uploaded result happens on the main screen; the dial stays in place and only the rows above and the text and key below it change.
 
 1. **Connect** (shown first while no API key is saved): title "Connect to Intervals.icu", the sentence "Paste your personal API key. You find it in Intervals.icu under Settings, Developer Settings.", labelled field "API key", "Stored on this phone only and sent only to Intervals.icu.", the notice "Keep your morning values intact" with the full CLAUDE.md text, key "Save key" (disabled while empty). States: key rejected (field border 2 pt ink, warning line "Intervals.icu did not accept this key. Check that you copied all of it, then save again."), connected (card "Connected", key "Continue").
-2. **Main** (nav title "HRV Bridge", sliders icon right, label "Settings" for accessibility, hidden while measuring).
+2. **Main** (nav title "SignON", sliders icon right, label "Settings" for accessibility, hidden while measuring).
 3. **Settings** (pushed): Measurement: Settling time (0, 30, 60, 90 s; footer "Time to sit still before the 60 s measurement. Beats from this time are not used."). Intervals.icu: API key Connected, Disconnect (destructive). Data: Delete all measurements (destructive, confirmation with the existing text), Debug log (pushed, Share). Footer "Measurements are stored on this phone only."
 
 **Main screen states**
@@ -72,7 +72,7 @@ Three screens. Everything from finding the strap to the uploaded result happens 
 | Connected | ink dot, name (bold), "connected" | live HR, ink hand at 12 | "Sit still, then start." and "<n> s settling, then a 60 s measurement." | Start (orange dot) |
 | Couldn't connect (15 s) | hollow dot | faint, "no strap" | warning "Couldn't connect to <name>. Check the strap is on and the electrodes are moist. Close other apps that connect to your heart rate monitor." | Try again |
 | Bluetooth off | hollow dot | faint, "Bluetooth off" | warning "Bluetooth is off. Turn it on in Control Centre or Settings, then try again." | Try again |
-| Not allowed | hollow dot | faint, "no access" | warning "Bluetooth access is not allowed. HRV Bridge needs it to find your strap. Allow it in Settings." | Open Settings |
+| Not allowed | hollow dot | faint, "no access" | warning "Bluetooth access is not allowed. SignON needs it to find your strap. Allow it in Settings." | Open Settings |
 | Poor contact | steps | window "poor contact" | phase and countdown inline, warning "Poor contact. Moisten the electrodes and make sure the strap fits snugly." | Stop |
 | Settling (its first 10 s also run the signal check) | steps: settle | ink hand, grey band | "Settling", countdown, "Sit still and breathe normally." | Stop |
 | Measuring | steps: measure (orange) | orange hand and band | orange dot "Recording", countdown, "<n> beats recorded" | Stop |

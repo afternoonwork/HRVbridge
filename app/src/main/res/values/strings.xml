@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Placeholder name: keep it in this one place. -->
-    <string name="app_name">HRV Bridge</string>
+    <string name="app_name">SignON</string>
 
     <!-- Main screen: strap -->
     <string name="no_strap">No strap connected</string>
@@ -12,7 +12,7 @@
     <string name="dbm">%1$d dBm</string>
     <string name="could_not_connect">Couldn\'t connect to %1$s. Check the strap is on and the electrodes are moist. Close other apps that connect to your heart rate monitor.</string>
     <string name="bluetooth_off">Bluetooth is off. Turn it on, then try again.</string>
-    <string name="bluetooth_not_allowed">Bluetooth access is not allowed. HRV Bridge needs it to find your strap. Allow it in Settings.</string>
+    <string name="bluetooth_not_allowed">Bluetooth access is not allowed. SignON needs it to find your strap. Allow it in Settings.</string>
     <string name="lie_still">Sit still, then start.</string>
     <string name="plan_settling">%1$d s settling, then a 60 s measurement.</string>
     <string name="plan_no_settling">No settling time, then a 60 s measurement.</string>
@@ -120,7 +120,7 @@
     <string name="delete_all_done">All measurements on this phone were deleted.</string>
     <string name="debug_log">Debug log</string>
     <string name="share_log">Share</string>
-    <string name="share_log_subject">HRV Bridge debug log</string>
+    <string name="share_log_subject">SignON debug log</string>
 
     <!-- Debug builds only -->
     <string name="debug_tools">Simulated strap (debug builds only)</string>

@@ -1,4 +1,4 @@
-# HRV Bridge (working title, placeholder)
+# SignON (Morning HRV and rHR)
 
 A deliberately minimal Android and iOS app that records a 1-minute morning
 measurement from a Bluetooth chest strap and writes resting HR, rMSSD and SDNN
@@ -27,9 +27,13 @@ deliberately with **no licence**: do not add one. Public release planned
 - Copy (Paul, 21 Oct 2026): never name other apps such as Polar Flow; say
   "Close other apps that connect to your heart rate monitor." The user sits
   for the measurement: "sit still", never "lie still".
-- Name and package ID are placeholders: app name "HRV Bridge", package
-  `com.placeholder.hrvbridge`. Must be replaced before the first Play upload
-  (the package ID is permanent on Google Play).
+- Name decided (Paul, 21 Oct 2026): "SignON" (exactly this casing),
+  subtitle "Morning HRV and rHR". The package ID
+  `com.placeholder.hrvbridge` and iOS bundle ID `PM.HRVBridge` are still
+  placeholders: replace them before the first Play upload (the package ID
+  is permanent on Google Play) and before TestFlight. Code identifiers
+  (Kotlin packages, `HRVBridge`/`HRVCore` targets, Keystore alias, file
+  names, event uids) keep the old name until then.
 - iOS: bundle ID `PM.HRVBridge` and development team `3AD9GLQSQH` (Paul's
   free Personal Team) are Paul's local placeholders from creating the Xcode
   project. Replace both with the final IDs before TestFlight / App Store.
@@ -418,4 +422,4 @@ Details in `docs/store-submission.md`.
   before public release.
 - Custom-scheme redirect for public clients? Token lifetime? (ask on forum)
 - Exact Intervals.icu connection settings labels for disabling RHR/HRV sync.
-- Final app name and package ID.
+- Final package ID and iOS bundle ID.
