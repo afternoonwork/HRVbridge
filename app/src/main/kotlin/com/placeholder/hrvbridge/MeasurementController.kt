@@ -9,12 +9,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import com.placeholder.hrvbridge.core.ApiResult
+import com.placeholder.hrvbridge.core.ArtefactFilter
 import com.placeholder.hrvbridge.core.Credential
 import com.placeholder.hrvbridge.core.DebugLog
 import com.placeholder.hrvbridge.core.HeartRateParser
 import com.placeholder.hrvbridge.core.HeartRateSource
 import com.placeholder.hrvbridge.core.Intervals
 import com.placeholder.hrvbridge.core.IntervalsClient
+import com.placeholder.hrvbridge.core.KeyCheck
 import com.placeholder.hrvbridge.core.MeasurementSession
 import com.placeholder.hrvbridge.core.SessionConfig
 import com.placeholder.hrvbridge.core.SessionRecord
@@ -37,6 +39,23 @@ sealed interface RetryStatus {
     data class Uploaded(val count: Int) : RetryStatus
 
     data class Failed(val reconnect: Boolean) : RetryStatus
+}
+
+/** The strap, independent of a measurement (main screen rows above the dial). */
+sealed interface StrapState {
+    data object Idle : StrapState
+
+    data class Searching(val found: List<FoundStrap>) : StrapState
+
+    data class Connecting(val name: String) : StrapState
+
+    data class Connected(val name: String) : StrapState
+
+    data class CouldNotConnect(val name: String) : StrapState
+
+    data object BluetoothOff : StrapState
+
+    data object NotAllowed : StrapState
 }
 
 sealed interface UploadStatus {
@@ -79,6 +98,31 @@ class MeasurementController @JvmOverloads constructor(
     /** Last attempt ended before the strap was connected. */
     var connectFailed by mutableStateOf(false)
         private set
+    var strap by mutableStateOf<StrapState>(StrapState.Idle)
+        private set
+    /** Latest heart rate from the strap, null before the first packet. */
+    var heartRate by mutableStateOf<Int?>(null)
+        private set
+    /** Arrival time of the latest beat that moved the hand, on the source clock. */
+    var lastBeatMs by mutableStateOf<Long?>(null)
+        private set
+    /**
+     * Cumulative hand angle in degrees: settling 0 to 360, measuring 360 to 720,
+     * done 720. Only increases during a measurement.
+     */
+    var handAngle by mutableStateOf(0.0)
+        private set
+    /** True when the hand should jump without animation (reset, or 0 s settling). */
+    var handJump by mutableStateOf(true)
+        private set
+    /** Result of the last key check; null before a check or while it runs. */
+    var keyCheck by mutableStateOf<KeyCheck?>(null)
+        private set
+    var checkingKey by mutableStateOf(false)
+        private set
+    /** 0, 30, 60 or 90 s; used by [startMeasurement]. */
+    var settlingSeconds by mutableStateOf(60)
+        private set
 
     val isActive: Boolean
         get() = connecting ||
@@ -94,9 +138,16 @@ class MeasurementController @JvmOverloads constructor(
     private var current: MeasurementSession? = null
     private var startedAt: Instant? = null
     private var record: SessionRecord? = null
+    private val settings = application.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+    /** Session config of the running measurement. */
+    private var running: SessionConfig = config
+    /** New flow ([connect], [startMeasurement]): the strap stays connected between measurements. */
+    private var keepStrap = false
+    private var measuringRr = ArrayList<Double>()
 
     init {
         credential = credentials.load()?.also(log::addSecrets)
+        settlingSeconds = settings.getInt(KEY_SETTLING, 60).takeIf { it in SETTLING_CHOICES } ?: 60
         retryPending()
     }
 
@@ -110,7 +161,88 @@ class MeasurementController @JvmOverloads constructor(
         }
     }
 
-    fun start(newSource: HeartRateSource) {
+    fun setSettling(seconds: Int) {
+        require(seconds in SETTLING_CHOICES)
+        settlingSeconds = seconds
+        settings.edit().putInt(KEY_SETTLING, seconds).apply()
+    }
+
+    /** Connects to the strap only; [startMeasurement] starts the 10 s check later. */
+    fun connect(newSource: HeartRateSource) {
+        start(newSource, measureOnConnect = false)
+    }
+
+    /** "Start": a measurement with the connected strap and the settling time setting. */
+    fun startMeasurement() {
+        val src = source ?: return
+        if (strap !is StrapState.Connected) return
+        cancelledInBackground = false
+        upload = UploadStatus.None
+        record = null
+        startedAt = Instant.now(wallClock)
+        running = config.copy(stabilisationMs = settlingSeconds * 1000L)
+        log.add("SESSION", "start $startedAt, app ${BuildConfig.VERSION_NAME}, $running")
+        resetHand()
+        val started = MeasurementSession(running, startMs = src.nowMs())
+        current = started
+        session = null
+        publish()
+        handler.removeCallbacks(ticker)
+        handler.postDelayed(ticker, TICK_MS)
+    }
+
+    /** "Done" or a confirmed "Stop": back to the main screen, the strap stays connected. */
+    fun finishMeasurement() {
+        if (!keepStrap) return reset()
+        handler.removeCallbacks(ticker)
+        current = null
+        session = null
+        upload = UploadStatus.None
+        resetHand()
+        if (source == null) strap = StrapState.Idle
+    }
+
+    /** "Repeat" or "Try again" after a measurement: same strap if still connected. */
+    fun measureAgain(fallback: () -> HeartRateSource) {
+        finishMeasurement()
+        if (source != null && strap is StrapState.Connected) startMeasurement() else connect(fallback())
+    }
+
+    /** One authenticated read to check the saved key; a rejected key is removed again. */
+    fun checkKey() {
+        val c = credential ?: return
+        keyCheck = null
+        checkingKey = true
+        val today = LocalDate.now(wallClock)
+        io.execute {
+            val outcome = client.checkKey(c, today)
+            handler.post {
+                log.add("AUTH", "key check: $outcome")
+                checkingKey = false
+                keyCheck = outcome
+                if (outcome == KeyCheck.REJECTED && credential == c) {
+                    credentials.clear()
+                    credential = null
+                }
+            }
+        }
+    }
+
+    fun start(newSource: HeartRateSource) = start(newSource, measureOnConnect = true)
+
+    private fun start(newSource: HeartRateSource, measureOnConnect: Boolean) {
+        keepStrap = !measureOnConnect
+        running = config
+        resetHand()
+        heartRate = null
+        strap = if (newSource is BleHeartRateSource) StrapState.Searching(emptyList()) else StrapState.Connecting(newSource.description)
+        if (newSource is BleHeartRateSource) {
+            newSource.onScanUpdate = { found, connectingTo ->
+                if (source === newSource && strap !is StrapState.Connected) {
+                    strap = connectingTo?.let { StrapState.Connecting(it) } ?: StrapState.Searching(found)
+                }
+            }
+        }
         stopSource()
         cancelledInBackground = false
         upload = UploadStatus.None
@@ -130,8 +262,13 @@ class MeasurementController @JvmOverloads constructor(
 
             override fun onConnected() {
                 if (source !== newSource || s != null) return
-                log.add("SOURCE", "connected, measurement clock starts")
                 connecting = false
+                strap = StrapState.Connected((newSource as? BleHeartRateSource)?.connectedName ?: SIMULATED_NAME)
+                if (!measureOnConnect) {
+                    log.add("SOURCE", "connected")
+                    return
+                }
+                log.add("SOURCE", "connected, measurement clock starts")
                 // The 10 s signal check starts only once notifications are on.
                 val started = MeasurementSession(config, startMs = newSource.nowMs())
                 s = started
@@ -142,24 +279,41 @@ class MeasurementController @JvmOverloads constructor(
 
             override fun onPacket(bytes: ByteArray, timeMs: Long) {
                 if (source !== newSource) return
-                log.add("RX", "t=$timeMs " + DebugLog.describePacket(bytes, HeartRateParser.parse(bytes)))
-                val session = s ?: return
+                val parsed = HeartRateParser.parse(bytes)
+                log.add("RX", "t=$timeMs " + DebugLog.describePacket(bytes, parsed))
+                parsed?.heartRate?.takeIf { it > 0 }?.let { heartRate = it }
+                val session = s ?: current ?: return
                 session.onPacket(bytes, timeMs)
+                moveHand(parsed?.rrIntervalsMs.orEmpty(), timeMs, session.state)
                 publish()
             }
 
             override fun onDisconnected() {
                 if (source !== newSource) return
                 log.add("SOURCE", "disconnected")
-                val session = s
-                if (session == null) {
+                val session = s ?: current
+                if (strap !is StrapState.Connected) {
                     connecting = false
                     connectFailed = true
+                    strap = when ((newSource as? BleHeartRateSource)?.failure) {
+                        BleHeartRateSource.Failure.BLUETOOTH_OFF -> StrapState.BluetoothOff
+                        BleHeartRateSource.Failure.NOT_ALLOWED -> StrapState.NotAllowed
+                        BleHeartRateSource.Failure.CONNECT_TIMEOUT ->
+                            StrapState.CouldNotConnect((newSource as BleHeartRateSource).connectingName ?: "strap")
+                        else -> StrapState.Idle
+                    }
+                    stopSource()
+                    return
+                }
+                strap = StrapState.Idle
+                heartRate = null
+                if (session == null) {
                     stopSource()
                     return
                 }
                 session.onDisconnected()
                 publish()
+                stopSource()
             }
 
             override fun onEvent(message: String) {
@@ -174,11 +328,18 @@ class MeasurementController @JvmOverloads constructor(
             log.add("SESSION", "cancelled: app left the foreground")
             reset()
             cancelledInBackground = true
+        } else if (source != null) {
+            // Foreground only: no background Bluetooth, also between measurements.
+            log.add("SOURCE", "app left the foreground, strap disconnected")
+            reset()
         }
     }
 
     fun reset() {
         stopSource()
+        strap = StrapState.Idle
+        heartRate = null
+        resetHand()
         current = null
         session = null
         connecting = false
@@ -280,12 +441,13 @@ class MeasurementController @JvmOverloads constructor(
         session = state
         when (state) {
             is SessionState.Finished -> {
-                stopSource()
+                if (keepStrap) handler.removeCallbacks(ticker) else stopSource()
+                setHand(720.0)
                 val r = SessionRecord(
                     startedAt = startedAt ?: Instant.now(wallClock),
                     // The wellness record is the local day the measurement started, not ended.
                     date = (startedAt ?: Instant.now(wallClock)).atZone(wallClock.zone).toLocalDate(),
-                    config = config,
+                    config = running,
                     series = state.series,
                     result = state.result,
                     malformedPackets = s.malformedPackets,
@@ -296,7 +458,7 @@ class MeasurementController @JvmOverloads constructor(
                 log.add("RESULT", state.result?.toString() ?: "no result")
                 if (state.result?.reliable == true) startUpload(state)
             }
-            is SessionState.Failed -> stopSource()
+            is SessionState.Failed -> if (keepStrap) handler.removeCallbacks(ticker) else stopSource()
             else -> Unit
         }
     }
@@ -328,6 +490,48 @@ class MeasurementController @JvmOverloads constructor(
         runCatching { sessions.save(r) }.onFailure { log.add("STORE", "save failed: $it") }
     }
 
+    /**
+     * The hand steps per beat: every beat while settling, accepted beats while
+     * measuring (same filter as the result; the result itself comes from the session).
+     */
+    private fun moveHand(rr: List<Double>, timeMs: Long, state: SessionState) {
+        if (rr.isEmpty()) return
+        when (state) {
+            is SessionState.Stabilising -> if (running.stabilisationMs > 0) {
+                val total = running.stabilisationMs.toDouble()
+                lastBeatMs = timeMs
+                setHand((total - state.remainingMs) / total * 360)
+            }
+            is SessionState.Measuring -> {
+                val first = measuringRr.size
+                measuringRr.addAll(rr)
+                val accepted = ArtefactFilter.filter(measuringRr, running.filter).accepted
+                if (accepted.subList(first, accepted.size).none { it }) return
+                val total = running.measurementMs.toDouble()
+                lastBeatMs = timeMs
+                // With 0 s settling there is no first turn: jump to 12 without spinning.
+                if (handAngle < 360 && running.stabilisationMs == 0L) {
+                    handJump = true
+                    handAngle = 360.0
+                }
+                setHand(360 + (total - state.remainingMs) / total * 360)
+            }
+            else -> Unit
+        }
+    }
+
+    private fun setHand(angle: Double) {
+        handJump = false
+        handAngle = maxOf(handAngle, minOf(angle, 720.0))
+    }
+
+    private fun resetHand() {
+        handJump = true
+        handAngle = 0.0
+        lastBeatMs = null
+        measuringRr = ArrayList()
+    }
+
     private fun stopSource() {
         handler.removeCallbacks(ticker)
         source?.stop()
@@ -339,10 +543,13 @@ class MeasurementController @JvmOverloads constructor(
         io.shutdown()
     }
 
-    private companion object {
-        const val TICK_MS = 200L
+    companion object {
+        private const val TICK_MS = 200L
+        const val KEY_SETTLING = "settlingSeconds"
+        val SETTLING_CHOICES = listOf(0, 30, 60, 90)
+        const val SIMULATED_NAME = "Simulated strap"
 
-        fun SessionState.summary(): String = when (this) {
+        private fun SessionState.summary(): String = when (this) {
             is SessionState.Finished -> "Finished (${rrMs.size} RR)"
             else -> toString()
         }
