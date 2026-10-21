@@ -32,13 +32,24 @@ enum MainPhase: Equatable {
 struct MainScreenState: Equatable {
     var phase: MainPhase
     var heartRate: Int?
+    /// Static hand angle (snapshots, and the value at the last update while live).
     var handAngle: Double = 0
+    /// While measuring: the hand follows this clock every frame.
+    var handClock: PhaseClock?
+    /// While measuring: accepted beats, for the breathing ring.
+    var pulse: BeatPulse?
     var settlingSeconds = 60
     var strapConnected = false
     /// The last measurement was cancelled because the app left the screen.
     var cancelled = false
     /// Retry of earlier uploads on open: footnote under the strap row.
     var retryLine: String?
+
+    func withHand(_ angle: Double) -> MainScreenState {
+        var s = self
+        s.handAngle = angle
+        return s
+    }
 
     var isMeasuring: Bool {
         switch phase {
@@ -59,7 +70,7 @@ struct MainScreenState: Equatable {
 
     var milestone: Milestone? {
         switch phase {
-        case .measuring: return handAngle >= 360 ? .recording : nil
+        case .measuring: return .recording
         case .couldNotConnect, .failed: return .problem
         case .notEnoughBeats: return .finishedUnreliable
         case let .questions(r): return r.reliable ? .finishedReliable : .finishedUnreliable
@@ -204,6 +215,7 @@ struct MainScreenView: View {
 
     /// Measured heights of everything but the dial, so the dial can shrink to keep
     /// warnings and keys visible on small screens (iPhone SE).
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var topHeight: CGFloat = 0
     @State private var belowHeight: CGFloat = 0
     @State private var keysHeight: CGFloat = 0
@@ -226,7 +238,7 @@ struct MainScreenView: View {
                         .frame(minHeight: 28)
                         .onGeometryChange(for: CGFloat.self, of: \.size.height) { topHeight = $0 }
                         .padding(.top, 8)
-                    HeartDial(model: state.dial, accessibilityText: dialAccessibility ?? state.dialAccessibility)
+                    dial
                         .frame(width: dialSize, height: dialSize)
                         .padding(.top, Space.stepsToDial)
                     below
@@ -247,6 +259,20 @@ struct MainScreenView: View {
             }
         }
         .background(Theme.bg.ignoresSafeArea())
+    }
+
+    /// While measuring the hand sweeps with the wall clock: every frame, or once a second
+    /// with Reduce Motion (it still carries the time, only the smoothing goes).
+    @ViewBuilder private var dial: some View {
+        let label = dialAccessibility ?? state.dialAccessibility
+        if let clock = state.handClock {
+            TimelineView(reduceMotion ? .periodic(from: .now, by: 1) : .animation) { _ in
+                HeartDial(model: state.withHand(clock.angle(at: Clock.nowMs())).dial,
+                          accessibilityText: label, pulse: state.pulse)
+            }
+        } else {
+            HeartDial(model: state.dial, accessibilityText: label)
+        }
     }
 
     private var belowSpacing: CGFloat {

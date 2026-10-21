@@ -108,6 +108,11 @@ deliberately with **no licence**: do not add one. Public release planned
    contact is poor before the check has passed, that phase's clock waits.
    Implemented in the session state machine (`MeasurementSession` in
    `:core` and HRVCore); the maths are unchanged.
+   Dial (decided by Paul 21 Oct 2026): the hand sweeps with the wall clock
+   like a seconds hand (one turn over settling, one over the measurement,
+   parked at 12 when done); accepted beats make the orange ring "breathe"
+   (opacity about 55% to 100% over each RR interval) while measuring only.
+   Reduce Motion / Remove animations: no breathing, hand updated once a second.
 3. Measurement: 60 s wall-clock, collect all RR.
 4. Keep screen on (`FLAG_KEEP_SCREEN_ON`), foreground only. No background BLE.
 

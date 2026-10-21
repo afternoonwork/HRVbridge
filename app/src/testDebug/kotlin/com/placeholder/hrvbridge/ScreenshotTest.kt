@@ -92,7 +92,7 @@ class ScreenshotTest {
         val suffix = if (dark) "dark" else "light"
         render("dial-$suffix", dark) {
             Box(Modifier.fillMaxSize().background(hrv.bg), contentAlignment = Alignment.Center) {
-                HeartDial(DialModel.running(52, 504.0, false), 264.dp, jump = true)
+                HeartDial(DialModel.running(52, 504.0, false), 264.dp)
             }
         }
         // Inside the real top app bar, so the height left for the content is as on a phone

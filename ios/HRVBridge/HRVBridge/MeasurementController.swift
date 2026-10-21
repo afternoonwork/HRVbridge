@@ -1,8 +1,27 @@
 import Foundation
 import HRVCore
 import Observation
-import SwiftUI
 import UIKit
+
+/// The running phase on the wall clock (`Clock.nowMs()`): the hand makes one turn over
+/// settling (turn 0) and one over the measurement (turn 1), like a seconds hand.
+struct PhaseClock: Equatable {
+    var startMs: Int64
+    var durationMs: Int64
+    var turn: Int
+
+    /// Cumulative degrees: settling 0 to 360, measuring 360 to 720.
+    func angle(at t: Int64) -> Double {
+        let f = durationMs > 0 ? Double(t - startMs) / Double(durationMs) : 1
+        return Double(turn) * 360 + min(1, max(0, f)) * 360
+    }
+}
+
+/// One accepted beat while measuring: `id` changes per beat, `rrMs` is its length.
+struct BeatPulse: Equatable {
+    var id = 0
+    var rrMs = 0.0
+}
 
 enum UploadStatus: Equatable {
     case none
@@ -31,12 +50,10 @@ final class MeasurementController {
     private(set) var retry: RetryStatus = .none
     private(set) var apiKey: ApiKey?
     private(set) var cancelledInBackground = false
-    /// Arrival time of the latest beat that moved the hand (every beat while settling,
-    /// accepted beats while measuring), on the session clock.
-    private(set) var lastBeatMs: Int64?
-    /// Cumulative hand angle in degrees: settling 0 to 360, measuring 360 to 720, done 720.
-    /// Only ever increases during a measurement.
-    private(set) var handAngle: Double = 0
+    /// The running phase on the wall clock, for the sweeping hand; nil when not measuring.
+    private(set) var phaseClock: PhaseClock?
+    /// Changes on every accepted beat while measuring (the ring breathes).
+    private(set) var pulse = BeatPulse()
     /// Result of the check after "Save key"; nil while checking or before a save.
     private(set) var keyCheck: KeyCheck?
     private(set) var checkingKey = false
@@ -144,8 +161,7 @@ final class MeasurementController {
         startedAt = Date()
         config = SessionConfig(stabilisationMs: Int64(stabilisationSeconds) * 1000)
         measuringRr = []
-        lastBeatMs = nil
-        setHand(0, animated: false)
+        phaseClock = nil
         log.add("SESSION", "start \(startedAt), stabilisation \(stabilisationSeconds) s")
         let s = MeasurementSession(config: config, startMs: Clock.nowMs())
         session = s
@@ -162,7 +178,7 @@ final class MeasurementController {
     func onPacket(_ bytes: [UInt8], at t: Int64) {
         guard let s = session else { return }
         s.onPacket(bytes, timeMs: t)
-        moveHand(bytes, at: t, state: s.state)
+        pulseBeats(bytes, state: s.state)
         publish()
     }
 
@@ -180,8 +196,7 @@ final class MeasurementController {
         state = nil
         upload = .none
         measuringRr = []
-        lastBeatMs = nil
-        setHand(0, animated: false)
+        phaseClock = nil
         UIApplication.shared.isIdleTimerDisabled = false
     }
 
@@ -220,40 +235,38 @@ final class MeasurementController {
         record.flatMap { try? $0.jsonData() }.map { String(decoding: $0, as: UTF8.self) }
     }
 
-    // MARK: Hand
+    // MARK: Hand and beats
 
-    /// The hand steps per beat: every beat while settling, accepted beats while measuring.
-    /// Angle from the session's remaining time at the beat's arrival (wall clock elsewhere).
-    private func moveHand(_ bytes: [UInt8], at t: Int64, state: SessionState) {
-        guard let rr = HeartRateParser.parse(bytes)?.rrIntervalsMs, !rr.isEmpty else { return }
-        switch state {
-        case let .stabilising(remaining, _) where config.stabilisationMs > 0:
-            let total = Double(config.stabilisationMs)
-            lastBeatMs = t
-            setHand((total - Double(remaining)) / total * 360)
-        case let .measuring(remaining, _, _):
-            let first = measuringRr.count
-            measuringRr += rr
-            let accepted = ArtefactFilter.filter(measuringRr, config: config.filter).accepted
-            guard accepted[first...].contains(true) else { return }
-            let total = Double(config.measurementMs)
-            lastBeatMs = t
-            // With 0 s settling there is no first turn: jump to 12 without spinning.
-            if handAngle < 360 && config.stabilisationMs == 0 { setHand(360, animated: false) }
-            setHand(360 + (total - Double(remaining)) / total * 360)
-        default:
-            break
-        }
+    /// Accepted beats while measuring make the orange ring breathe (same filter as the
+    /// result; the result itself comes from the session).
+    private func pulseBeats(_ bytes: [UInt8], state: SessionState) {
+        guard case let .measuring(_, beats, _) = state,
+              let rr = HeartRateParser.parse(bytes)?.rrIntervalsMs, !rr.isEmpty else { return }
+        // The session restarts the measurement on poor contact before the check.
+        if measuringRr.count + rr.count != beats { measuringRr = [] }
+        let first = measuringRr.count
+        measuringRr += rr
+        let accepted = ArtefactFilter.filter(measuringRr, config: config.filter).accepted
+        guard let last = accepted.indices.last(where: { $0 >= first && accepted[$0] }) else { return }
+        pulse = BeatPulse(id: pulse.id + 1, rrMs: measuringRr[last])
     }
 
-    private func setHand(_ angle: Double, animated: Bool = true) {
-        if animated {
-            handAngle = max(handAngle, min(angle, 720))
-        } else {
-            var t = Transaction()
-            t.disablesAnimations = true
-            withTransaction(t) { handAngle = angle }
+    /// The hand follows the wall clock: anchor the current phase on the session's
+    /// remaining time (it holds while contact is poor before the check).
+    private func updatePhaseClock(_ state: SessionState?) {
+        let next: (remaining: Int64, duration: Int64, turn: Int)?
+        switch state {
+        case let .stabilising(remaining, _)?: next = (remaining, config.stabilisationMs, 0)
+        case let .measuring(remaining, _, _)?: next = (remaining, config.measurementMs, 1)
+        default: next = nil
         }
+        guard let next else {
+            if phaseClock != nil { phaseClock = nil }
+            return
+        }
+        let start = Clock.nowMs() - (next.duration - next.remaining)
+        if let c = phaseClock, c.turn == next.turn, abs(c.startMs - start) < 100 { return }
+        phaseClock = PhaseClock(startMs: start, durationMs: next.duration, turn: next.turn)
     }
 
     private func tick() {
@@ -265,6 +278,7 @@ final class MeasurementController {
     private func publish() {
         guard let s = session else { return }
         let new = s.state
+        updatePhaseClock(new)
         if new == state { return }
         if !sameCase(new, state) { log.add("PHASE", summary(new)) }
         state = new
@@ -277,7 +291,6 @@ final class MeasurementController {
                                   series: series, result: result, malformedPackets: s.malformedPackets, uploadedAt: nil)
             record = r
             save(r)
-            setHand(720)
             log.add("RESULT", result.map { "\($0)" } ?? "no result")
             if result?.reliable == true { uploadOrAsk(r) }
         case .failed:

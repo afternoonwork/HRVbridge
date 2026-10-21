@@ -17,6 +17,13 @@ enum Clock {
         return unlockedNow()
     }
 
+    /// 1 with a real strap; the simulated strap may run faster.
+    nonisolated static var currentSpeed: Double {
+        lock.lock()
+        defer { lock.unlock() }
+        return speed
+    }
+
     /// Continues from the current time at the new speed (monotonic across changes).
     nonisolated static func setSpeed(_ newSpeed: Double) {
         lock.lock()

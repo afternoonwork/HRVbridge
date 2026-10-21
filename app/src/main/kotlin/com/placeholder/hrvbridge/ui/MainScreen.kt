@@ -25,7 +25,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.withFrameMillis
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.onSizeChanged
@@ -40,7 +44,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.placeholder.hrvbridge.BeatPulse
 import com.placeholder.hrvbridge.FoundStrap
+import com.placeholder.hrvbridge.PhaseClock
 import com.placeholder.hrvbridge.R
 import com.placeholder.hrvbridge.core.FailReason
 
@@ -84,8 +90,12 @@ fun Txt.resolve(): String = stringResource(id, *args.toTypedArray())
 data class MainScreenState(
     val phase: MainPhase,
     val heartRate: Int? = null,
+    /** Static hand angle (screenshots, and the value at the last update while live). */
     val handAngle: Double = 0.0,
-    val handJump: Boolean = false,
+    /** While measuring: the hand follows this clock every frame. */
+    val handClock: PhaseClock? = null,
+    /** While measuring: accepted beats, for the breathing ring. */
+    val pulse: BeatPulse? = null,
     val settlingSeconds: Int = 60,
     val strapConnected: Boolean = false,
     /** The last measurement was cancelled because the app left the screen. */
@@ -106,7 +116,7 @@ data class MainScreenState(
     enum class Milestone { RECORDING, FINISHED_RELIABLE, FINISHED_UNRELIABLE, UPLOADED, PROBLEM }
 
     val milestone: Milestone? get() = when (phase) {
-        is MainPhase.Measuring -> if (handAngle >= 360) Milestone.RECORDING else null
+        is MainPhase.Measuring -> Milestone.RECORDING
         is MainPhase.CouldNotConnect, is MainPhase.Failed -> Milestone.PROBLEM
         MainPhase.NotEnoughBeats -> Milestone.FINISHED_UNRELIABLE
         is MainPhase.Questions -> if (phase.summary.reliable) Milestone.FINISHED_RELIABLE else Milestone.FINISHED_UNRELIABLE
@@ -245,7 +255,7 @@ fun MainTopBar(showSettings: Boolean, openSettings: () -> Unit) {
 /** The main screen body (below the top app bar). The dial stays in place. */
 @Composable
 fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Modifier = Modifier,
-                      dialDescription: String = state.dialDescription) {
+                      dialDescription: String = state.dialDescription, now: () -> Long = { 0 }) {
     if (state.phase is MainPhase.Questions) {
         QuestionsPage(submit = actions.submitAnswers, modifier = modifier)
         return
@@ -256,6 +266,18 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
     var belowHeight by remember { mutableIntStateOf(0) }
     var keysHeight by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
+    // While measuring the hand sweeps with the clock: every frame, or once a second
+    // with Remove animations (it still carries the time, only the smoothing goes).
+    val still = animationsOff()
+    var liveAngle by remember { mutableDoubleStateOf(state.handAngle) }
+    LaunchedEffect(state.handClock, still) {
+        val clock = state.handClock ?: return@LaunchedEffect
+        while (true) {
+            liveAngle = clock.angle(now())
+            if (still) delay(1_000) else withFrameMillis { }
+        }
+    }
+    val liveState = if (state.handClock != null) state.copy(handAngle = liveAngle) else state
     BoxWithConstraints(modifier.fillMaxSize().background(hrv.bg)) {
         val gap = if (state.phase is MainPhase.Result || state.phase == MainPhase.NotEnoughBeats) {
             Space.dialToMetrics
@@ -273,7 +295,7 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
                     Modifier.padding(top = 8.dp).heightIn(min = 28.dp).onSizeChanged { topHeight = it.height },
                     contentAlignment = Alignment.Center,
                 ) { Top(state) }
-                HeartDial(state.dial, size, Modifier.padding(top = Space.stepsToDial), jump = state.handJump,
+                HeartDial(liveState.dial, size, Modifier.padding(top = Space.stepsToDial), pulse = state.pulse,
                           description = dialDescription)
                 Box(Modifier.padding(top = gap).onSizeChanged { belowHeight = it.height }.padding(bottom = 16.dp)) {
                     Below(state, actions)
