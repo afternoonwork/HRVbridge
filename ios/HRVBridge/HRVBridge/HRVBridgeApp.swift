@@ -11,7 +11,15 @@ import SwiftUI
 struct HRVBridgeApp: App {
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if let name = Snapshots.requested {
+                Snapshots.view(name)
+            } else {
+                ContentView()
+            }
+            #else
             ContentView()
+            #endif
         }
     }
 }

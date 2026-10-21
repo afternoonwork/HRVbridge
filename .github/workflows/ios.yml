@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - "ios/**"
+      - "scripts/ios-snapshots.sh"
       - "core/src/test/resources/test-vectors.json"
       - "core/src/test/resources/recordings/**"
       - ".github/workflows/ios.yml"
@@ -13,6 +14,7 @@ on:
     branches: [main]
     paths:
       - "ios/**"
+      - "scripts/ios-snapshots.sh"
       - "core/src/test/resources/test-vectors.json"
       - "core/src/test/resources/recordings/**"
       - ".github/workflows/ios.yml"
@@ -60,6 +62,19 @@ jobs:
           echo "Swift warnings and errors:"
           grep -E "\.swift:[0-9]+:[0-9]+: (warning|error):" xcodebuild-simulator.log | sort -u || echo "none"
           exit "${status:-0}"
+
+      # Nobody can look at the UI from the cloud: screenshot every state on an
+      # iPhone SE simulator (375 x 667) in light and dark, as an artifact.
+      - name: Screenshots (simulator)
+        run: scripts/ios-snapshots.sh build/DerivedData/Build/Products/Debug-iphonesimulator/HRVBridge.app build/screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-screenshots
+          path: build/screenshots
+          if-no-files-found: ignore
 
       # Paul installs on a real iPhone: also compile against the device SDK.
       - name: Build app for iOS devices (no signing)
