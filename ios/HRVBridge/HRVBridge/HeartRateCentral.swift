@@ -147,17 +147,19 @@ final class HeartRateCentral: NSObject {
         status = .connected(name)
         log.add("SIM", "start \(scenario.title) at \(Int(speed))x")
         onConnected?()
-        let packets = scenario.packets()
         let start = Clock.nowMs()
+        // Endless feed: keeps sending until disconnected, so a measurement started
+        // later still gets data (one scenario pass lasts seconds at 60x).
         simulation = Task { [weak self] in
-            for p in packets {
+            var feed = SimulatorFeed(scenario)
+            while !Task.isCancelled {
+                let p = feed.next()
                 let due = start + p.timeMs
                 let waitMs = Double(due - Clock.nowMs()) / speed
                 if waitMs > 0 { try? await Task.sleep(for: .milliseconds(Int(waitMs))) }
                 if Task.isCancelled { return }
                 self?.value(p.bytes, at: due)
             }
-            self?.log.add("SIM", "out of data")
         }
     }
     #endif

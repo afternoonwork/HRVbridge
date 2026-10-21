@@ -47,3 +47,34 @@ final class SyntheticTests: XCTestCase {
         XCTAssertFalse(bad!.reliable)
     }
 }
+
+final class SimulatorFeedTests: XCTestCase {
+    func testFeedNeverRunsOutAndKeepsOneSecondSpacing() {
+        var feed = SimulatorFeed(.calm)
+        let packets = (0..<800).map { _ in feed.next() } // more than three passes of the scenario
+        XCTAssertEqual(packets.first?.timeMs, 1000)
+        for (a, b) in zip(packets, packets.dropFirst()) { XCTAssertEqual(b.timeMs - a.timeMs, 1000) }
+    }
+
+    func testMeasurementStartedLateStillGetsData() {
+        // The user taps Start long after the simulated strap connected (the reported bug).
+        var feed = SimulatorFeed(.calm)
+        var p = feed.next()
+        while p.timeMs < 500_000 { p = feed.next() }
+        let session = MeasurementSession(config: SessionConfig(), startMs: p.timeMs)
+        while session.state.isActive {
+            session.onPacket(p.bytes, timeMs: p.timeMs)
+            p = feed.next()
+        }
+        guard case let .finished(_, _, result) = session.state else { return XCTFail("\(session.state)") }
+        XCTAssertTrue(result!.reliable)
+    }
+
+    func testPoorContactOnlyAtTheVeryStart() {
+        var feed = SimulatorFeed(.poorContactAtStart)
+        let packets = (0..<500).map { _ in feed.next() }
+        let poor = packets.filter { HeartRateParser.parse($0.bytes)!.poorContact }.map(\.timeMs)
+        XCTAssertFalse(poor.isEmpty)
+        XCTAssertLessThanOrEqual(poor.max()!, 15_000)
+    }
+}
