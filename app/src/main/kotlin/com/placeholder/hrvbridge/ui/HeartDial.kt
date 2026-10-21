@@ -98,11 +98,11 @@ fun animationsOff(): Boolean {
     }
 }
 
-/** Ring opacity over one beat ([f] 0 to 1): up from 55% to 100% in the first quarter, back down over the rest. */
+/** Ring opacity over one beat ([f] 0 to 1): up from 35% to 100% in the first quarter, back down over the rest. */
 internal fun breath(f: Float): Float = if (f < 0.25f) {
-    0.55f + 0.45f * FastOutSlowInEasing.transform(f / 0.25f)
+    0.35f + 0.65f * FastOutSlowInEasing.transform(f / 0.25f)
 } else {
-    1f - 0.45f * FastOutSlowInEasing.transform((f - 0.25f) / 0.75f)
+    1f - 0.65f * FastOutSlowInEasing.transform((f - 0.25f) / 0.75f)
 }
 
 /** The heart rate dial, drawn in code. */
@@ -114,7 +114,7 @@ fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: 
     val angle = model.handAngle.toFloat()
     val band = model.bandAngle.toFloat()
     // Breathing: on each accepted beat the orange ring eases up to full opacity and fades
-    // back to about 55% over that beat's RR interval. Only while measuring; otherwise fully
+    // back to 35% over that beat's RR interval. Only while measuring; otherwise fully
     // opaque. Opacity only, so it also runs with Remove animations: driven by the frame
     // clock, because Compose animations finish instantly at animator scale 0.
     val breathing = model.band == DialModel.Band.MEASURE && pulse != null && pulse.id > 0
