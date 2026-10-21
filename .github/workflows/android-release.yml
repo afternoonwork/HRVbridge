@@ -62,11 +62,18 @@ jobs:
             ls app/build/outputs/apk/release/ || true
             exit 1
           fi
-          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner"
-          CERTS=$("$APKSIGNER" verify --print-certs "$APK")
-          CERT_SHA256=$(printf '%s\n' "$CERTS" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          BUILD_TOOLS=$(ls "$ANDROID_HOME/build-tools" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n 1)
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner"
+          CERTS=$("$APKSIGNER" verify --verbose --print-certs "$APK")
+          printf '%s\n' "$CERTS"
+          # Label differs by apksigner version and scheme ("Signer #1", "Signer (minSdkVersion=...)").
+          CERT_SHA256=$(printf '%s\n' "$CERTS" | grep 'certificate SHA-256 digest' | grep -oE '[0-9a-f]{64}' | sort -u || true)
           if [ -z "$CERT_SHA256" ]; then
             echo "::error::apksigner found no signing certificate"
+            exit 1
+          fi
+          if [ "$(printf '%s\n' "$CERT_SHA256" | wc -l)" -ne 1 ]; then
+            echo "::error::More than one signing certificate (unexpected key rotation)"
             exit 1
           fi
           NAME="SignON-$VERSION.apk"
@@ -91,9 +98,15 @@ jobs:
         run: |
           PRERELEASE=""
           case "$TAG" in *-beta*) PRERELEASE="--prerelease" ;; esac
-          gh release create "$TAG" --target "$GITHUB_SHA" --title "SignON $VERSION" \
-            --notes-file dist/notes.md $PRERELEASE \
-            "dist/SignON-$VERSION.apk" "dist/SignON-$VERSION.apk.sha256"
+          FILES=("dist/SignON-$VERSION.apk" "dist/SignON-$VERSION.apk.sha256")
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # Rerun: replace the assets and notes of the existing release.
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+            gh release edit "$TAG" --title "SignON $VERSION" --notes-file dist/notes.md $PRERELEASE
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "SignON $VERSION" \
+              --notes-file dist/notes.md $PRERELEASE "${FILES[@]}"
+          fi
       - name: Delete keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/signon.jks"
