@@ -12,9 +12,9 @@ android {
         applicationId = "fyi.paulmuller.signon"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         // The release tag must be v<versionName>; bump versionCode with every release.
-        versionName = "0.1.0-beta.1"
+        versionName = "0.1.0-beta.2"
     }
 
     // Release signing (upload key) from the environment or ~/.gradle/gradle.properties,

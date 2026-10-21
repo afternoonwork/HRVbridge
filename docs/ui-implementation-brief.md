@@ -28,6 +28,7 @@ Define these once per platform (an asset catalogue colour set or a `Theme` enum 
 | line | #E2E2DF | #36352F | Hairlines only (decorative) |
 | line-strong | #8A8A86 | #74726C | Text field border (3:1) |
 | accent | #E2561C | #FF6A2B | Recording and uploaded only. Never text. Graphics rule 3:1 applies |
+| window-fill | #C84A16 | #C84A16 | Dial heart rate window fill only (white text, 4.7:1). Android `WindowFill`, iOS `Theme.accentFill` |
 | destructive | system red | system red | iOS `role: .destructive`, Android `colorScheme.error`. Never the hex in code |
 
 **Type** (system fonts: SF Pro, Roboto; all scale with Dynamic Type and font scaling except the dial numerals):
@@ -52,6 +53,8 @@ Define these once per platform (an asset catalogue colour set or a `Theme` enum 
 **Shadows:** key = top highlight (white 90% light, 6% dark) + 0 3 8 black 12% (dark 55%); dial = same highlight + 0 6 18; window and fields = inset 0 1 3. Keep them subtle.
 
 **Sizes:** dial 264 on a 375 wide screen, min(264, width minus 112), at most 300; primary key height 56 (min width 200); secondary key 52 (min width 180); touch targets 44 pt / 48 dp; indicator dots 8.
+
+**Dial size:** on short screens (iPhone SE, 360 x 640 dp) the height also bounds the dial. It keeps one size from Connected through settling and measuring, with or without poor contact: it is sized from the top slot (always the step indicator height, the strap row centred in it), the taller of the settling and measuring readouts (poor contact warning included) and the one-key area. Only terminal states (result and others) may shrink it, animated, and only if their content would not fit; they never grow it.
 
 **Android ColorScheme mapping:** primary = ink, onPrimary = bg, background = bg, surface = surface, onSurface = ink, onSurfaceVariant = ink-2, outlineVariant = line, outline = line-strong, tertiary = accent, error = platform default. No dynamic colour.
 
@@ -116,7 +119,8 @@ Build the dial as one reusable view (`HeartDial` in SwiftUI, `HeartDial` composa
 - Heartbeats are shown by the orange ring "breathing" in time with the heart, not by the hand: on each accepted beat the ring's opacity eases up and fades back down over that beat's RR interval (smooth, never on/off; 35% to 100%). Only while measuring; settling and done states are static.
 - Hand and hub switch from ink to accent as the hand crosses 12 into measuring.
 - The window updates on every strap packet (about 1 Hz), without animation.
-- The window is filled with orange #E2561C (the light theme accent) in both themes, with white text and no border; "poor contact" is 14 bold so it counts as large text (white on #E2561C is about 3.6:1).
+- While connected and showing a heart rate or label, the window is filled with window-fill #C84A16 in both themes (window only; ring, hand and heart stay accent), with white text and no border; white on #C84A16 is 4.7:1. In faint states (no strap, Bluetooth off, no access, searching, connecting) and when empty it is plain: bg, 1 pt line border, ink / ink-2 text. "poor contact" is bold, auto-sized to fit the window (at least 12), never ellipsised.
+- The window scales with the dial: 96 x 46, radius 10 and the text sizes are for a 264 dial.
 
 The measurement controller exposes the running phase's start and length on its clock (for the hand) and a pulse per accepted beat with its RR (for the ring). The per-beat hand and the latest-beat timestamp are gone.
 
@@ -188,7 +192,10 @@ The measurement controller exposes the running phase's start and length on its c
 - [ ] Hand sweeps with the wall clock, never moves backwards, crosses 12 into recording; the orange ring breathes once per accepted beat while measuring
 - [ ] Reduce Motion / Remove animations switches colours instantly; the hand still updates every frame and the ring still breathes
 - [ ] Nothing uploads automatically: the result shows "Upload to Intervals.icu" and the text key "close without uploading", then one "Done" key once the upload has happened ("Repeat" and "Upload anyway" when unreliable)
-- [ ] Dial window orange #E2561C with white text in light and dark; "poor contact" 14 bold fits without ellipsis
+- [ ] Dial window #C84A16 with white text in light and dark while connected, plain in faint and empty states; "poor contact" bold fits without ellipsis
+- [ ] Dial size identical from Connected through settling and measuring, poor contact included
+- [ ] "poor contact" never ellipsised, at any dial size
+- [ ] Nav titles centred on both platforms (Android: centred top app bar, as on iOS)
 - [ ] Haptics fire only at the listed moments
 - [ ] VoiceOver and TalkBack read the dial and steps as specified
 - [ ] Destructive actions use the platform's destructive role
