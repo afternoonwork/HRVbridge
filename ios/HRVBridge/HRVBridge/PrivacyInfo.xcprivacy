@@ -7,24 +7,11 @@
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
-	<!-- Heart rate and HRV values go to the user's own Intervals.icu account (app
-	     functionality only). Not linked to identity by the developer; the developer
-	     receives nothing. -->
+	<!-- No data collected: the developer runs no server. Values go only to the user's
+	     own Intervals.icu account with the user's own key; the developer and its partners
+	     cannot access them (decided 21 Oct 2026, see docs/store-submission.md). -->
 	<key>NSPrivacyCollectedDataTypes</key>
-	<array>
-		<dict>
-			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypeHealth</string>
-			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypeTracking</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypePurposes</key>
-			<array>
-				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
-			</array>
-		</dict>
-	</array>
+	<array/>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<!-- UserDefaults: remembered strap id and the settling time setting, own app only. -->
