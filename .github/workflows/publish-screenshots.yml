@@ -1,0 +1,43 @@
+name: Publish screenshots
+
+# Review-only branch (never merged): copies the screenshot artifacts of main's
+# latest iOS and Android runs into review/screenshots/ as plain PNGs, so they
+# can be viewed without downloading CI artifacts. Edit the run ids and push.
+on:
+  push:
+    branches: [review/screenshots]
+    paths: [".github/workflows/publish-screenshots.yml"]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      IOS_RUN: "39593297768"     # iOS workflow on main, dd4e216
+      ANDROID_RUN: "39593308271" # Android workflow on main, 50bea87
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios-screenshots
+          path: review/screenshots/ios
+          run-id: ${{ env.IOS_RUN }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-screenshots
+          path: review/screenshots/android
+          run-id: ${{ env.ANDROID_RUN }}
+          github-token: ${{ github.token }}
+      - name: Commit
+        run: |
+          ls review/screenshots/ios | wc -l
+          ls review/screenshots/android | wc -l
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add review/screenshots
+          git commit -m "Screenshots from main: iOS run $IOS_RUN, Android run $ANDROID_RUN" || echo "nothing new"
+          git push
