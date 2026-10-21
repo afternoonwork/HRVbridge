@@ -266,7 +266,7 @@ struct MainScreenView: View {
     @ViewBuilder private var dial: some View {
         let label = dialAccessibility ?? state.dialAccessibility
         if let clock = state.handClock {
-            TimelineView(reduceMotion ? .periodic(from: .now, by: 1) : .animation) { _ in
+            TimelineView(.animation(minimumInterval: reduceMotion ? 1 : nil)) { _ in
                 HeartDial(model: state.withHand(clock.angle(at: Clock.nowMs())).dial,
                           accessibilityText: label, pulse: state.pulse)
             }
