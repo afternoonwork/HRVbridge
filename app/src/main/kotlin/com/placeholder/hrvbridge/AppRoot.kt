@@ -51,6 +51,7 @@ import com.placeholder.hrvbridge.ui.MainActions
 import com.placeholder.hrvbridge.ui.MainPhase
 import com.placeholder.hrvbridge.ui.MainScreenContent
 import com.placeholder.hrvbridge.ui.MainScreenState
+import com.placeholder.hrvbridge.ui.MainTopBar
 import com.placeholder.hrvbridge.ui.ResultSummary
 import com.placeholder.hrvbridge.ui.SettingsActions
 import com.placeholder.hrvbridge.ui.SettingsContent
@@ -92,7 +93,6 @@ private fun ConnectRoute(controller: MeasurementController, proceed: () -> Unit)
     val view = LocalView.current
     LaunchedEffect(controller.keyCheck) {
         when (controller.keyCheck) {
-            KeyCheck.VALID -> view.haptic(confirm = true)
             KeyCheck.REJECTED -> view.haptic(confirm = false)
             else -> Unit
         }
@@ -173,26 +173,9 @@ private fun MainRoute(controller: MeasurementController, openSettings: () -> Uni
 
     Scaffold(
         containerColor = hrv.bg,
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium) },
-                actions = {
-                    if (!state.isMeasuring) {
-                        IconButton(onClick = openSettings, modifier = Modifier.semantics {
-                            contentDescription = context.getString(R.string.settings)
-                        }) { SlidersIcon(hrv.ink) }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = hrv.bg, titleContentColor = hrv.ink),
-            )
-        },
+        topBar = { MainTopBar(showSettings = !state.isMeasuring, openSettings = openSettings) },
     ) { padding ->
         Box(Modifier.padding(padding)) {
-            // Phase changes are announced (live region).
-            Box(Modifier.size(1.dp).semantics {
-                liveRegion = LiveRegionMode.Polite
-                contentDescription = state.phaseTitle
-            })
             MainScreenContent(
                 state,
                 MainActions(

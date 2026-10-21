@@ -7,6 +7,7 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -95,7 +96,16 @@ class ScreenshotTest {
                 HeartDial(DialModel.running(52, 504.0, false), 264.dp, jump = true)
             }
         }
-        for ((name, state) in states) render("$name-$suffix", dark) { MainScreenContent(state, MainActions()) }
+        // Inside the real top app bar, so the height left for the content is as on a phone
+        // (no status bar in Robolectric: about 24 dp more than on a device).
+        for ((name, state) in states) {
+            render("$name-$suffix", dark) {
+                androidx.compose.material3.Scaffold(
+                    containerColor = hrv.bg,
+                    topBar = { com.placeholder.hrvbridge.ui.MainTopBar(!state.isMeasuring) {} },
+                ) { padding -> MainScreenContent(state, MainActions(), Modifier.padding(padding)) }
+            }
+        }
         render("connect-$suffix", dark) { ConnectScreen("", {}, ConnectPhase.Idle, {}, {}) }
         render("connect-rejected-$suffix", dark) {
             ConnectScreen("abc123", {}, ConnectPhase.Problem(Txt(R.string.api_key_rejected)), {}, {})
