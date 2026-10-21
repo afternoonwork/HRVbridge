@@ -49,14 +49,14 @@
     <string name="share_log">Share debug log</string>
     <string name="share_log_subject">HRV Bridge debug log</string>
 
-    <string name="connection_title">Intervals.icu</string>
-    <string name="connection_none">Not connected.</string>
+    <string name="connection_title">Connect to Intervals.icu</string>
+    <string name="connection_none">Not connected yet. Measurements are kept on this phone and uploaded once you connect.</string>
     <string name="connection_api_key">Connected with a personal API key.</string>
     <string name="connection_oauth">Connected as %1$s.</string>
     <string name="connection_oauth_unnamed">Connected.</string>
     <string name="disconnect">Disconnect</string>
-    <string name="advanced_api_key">Advanced: paste personal API key</string>
-    <string name="api_key_hint">For testing. You can find your personal API key in your Intervals.icu settings. It is stored encrypted on this device only.</string>
+    <string name="api_key_where">Paste your personal API key. You find it in Intervals.icu under Settings, Developer Settings.</string>
+    <string name="api_key_stored">The key is stored encrypted on this phone only and is sent only to Intervals.icu.</string>
     <string name="api_key_label">API key</string>
     <string name="api_key_save">Save key</string>
     <string name="api_key_blank">Please paste a key first.</string>
