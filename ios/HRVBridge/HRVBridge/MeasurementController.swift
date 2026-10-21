@@ -169,7 +169,8 @@ final class MeasurementController {
         switch new {
         case let .finished(_, series, result):
             stopTicking()
-            let r = SessionRecord(startedAt: startedAt, date: LocalDate(date: Date()),
+            // The wellness record is the local day the measurement started, not ended.
+            let r = SessionRecord(startedAt: startedAt, date: LocalDate(date: startedAt),
                                   config: SessionConfig(stabilisationMs: Int64(stabilisationSeconds) * 1000),
                                   series: series, result: result, malformedPackets: s.malformedPackets, uploadedAt: nil)
             record = r

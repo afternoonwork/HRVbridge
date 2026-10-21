@@ -53,6 +53,8 @@ final class HeartRateCentral: NSObject {
         case connecting(String)
         case connected(String)
         case disconnected(String)
+        /// Could not connect; the message is shown as is.
+        case failed(String)
     }
 
     private(set) var status: Status = .idle
@@ -79,6 +81,9 @@ final class HeartRateCentral: NSObject {
     private static let heartRateService = CBUUID(string: "180D")
     private static let heartRateMeasurement = CBUUID(string: "2A37")
     private static let rememberedKey = "lastStrapId"
+    /// CoreBluetooth never times out a connect; a strap held by another app can stall.
+    static let connectTimeout: Duration = .seconds(15)
+    static let connectTimeoutMessage = "Couldn't connect. Close other apps using the strap (e.g. Polar Flow) and try again."
 
     init(log: DebugLog) {
         self.log = log
@@ -110,6 +115,14 @@ final class HeartRateCentral: NSObject {
         status = .connecting(p.name ?? "strap")
         log.add("BLE", "connect \(id) name=\(p.name ?? "?")")
         manager.connect(p, options: nil)
+        Task { [weak self] in
+            try? await Task.sleep(for: Self.connectTimeout)
+            guard let self, p === self.current, !self.isConnected else { return }
+            self.log.add("BLE", "connect timeout after 15 s, cancelling")
+            self.manager?.cancelPeripheralConnection(p)
+            self.ended(p, "connect timeout")
+            self.status = .failed(Self.connectTimeoutMessage)
+        }
     }
 
     func disconnect() {
@@ -191,6 +204,11 @@ final class HeartRateCentral: NSObject {
 
     private func stateChanged(_ state: CBManagerState) {
         log.add("BLE", "central state \(state.rawValue)")
+        // Powered off or resetting: CoreBluetooth does not call didDisconnectPeripheral,
+        // so end the current strap here or a running measurement would hang.
+        if state != .poweredOn, let p = current {
+            ended(p, "Bluetooth became unavailable (state \(state.rawValue))")
+        }
         switch state {
         case .poweredOn: beginScanIfReady()
         case .poweredOff: status = .bluetoothUnavailable("Bluetooth is off.")

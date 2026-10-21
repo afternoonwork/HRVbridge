@@ -240,6 +240,9 @@ private struct StrapSection: View {
             case let .connected(name):
                 LabeledContent("Connected", value: name)
                 Button("Disconnect", role: .destructive) { central.disconnect() }
+            case let .failed(message):
+                Text(message).foregroundStyle(.red)
+                Button("Try again") { central.startScan() }
             case let .disconnected(reason):
                 Text("Not connected (\(reason)).")
                 Button("Find strap") { central.startScan() }
