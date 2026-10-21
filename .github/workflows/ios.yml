@@ -1,0 +1,76 @@
+name: iOS
+
+# Runs only for iOS changes (and the shared vectors), once per PR push plus
+# pushes to main; superseded runs are cancelled.
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "core/src/test/resources/test-vectors.json"
+      - ".github/workflows/ios.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "core/src/test/resources/test-vectors.json"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Paul builds locally with Xcode 26.3 (Intel Mac maximum). Use the same
+      # version when the runner image has it, otherwise the newest 26.x.
+      - name: Select Xcode
+        run: |
+          ls -d /Applications/Xcode*.app || true
+          # Image folders are named like Xcode_26.3.0.app.
+          XCODE=$(ls -d /Applications/Xcode_26.3*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE" ]; then
+            XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          fi
+          if [ -n "$XCODE" ] && [ -d "$XCODE" ]; then sudo xcode-select -s "$XCODE"; fi
+          xcodebuild -version
+          swift --version
+
+      - name: HRVCore tests
+        run: swift test --package-path ios/HRVCore
+
+      - name: Build app for the iOS simulator (no signing)
+        run: |
+          xcodebuild build \
+            -project ios/HRVBridge/HRVBridge.xcodeproj \
+            -scheme HRVBridge \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            > xcodebuild-simulator.log 2>&1 || status=$?
+          tail -n 40 xcodebuild-simulator.log
+          echo "Swift warnings and errors:"
+          grep -E "\.swift:[0-9]+:[0-9]+: (warning|error):" xcodebuild-simulator.log | sort -u || echo "none"
+          exit "${status:-0}"
+
+      # Paul installs on a real iPhone: also compile against the device SDK.
+      - name: Build app for iOS devices (no signing)
+        run: |
+          xcodebuild build \
+            -project ios/HRVBridge/HRVBridge.xcodeproj \
+            -scheme HRVBridge \
+            -configuration Debug \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            > xcodebuild-device.log 2>&1 || status=$?
+          tail -n 40 xcodebuild-device.log
+          echo "Swift warnings and errors:"
+          grep -E "\.swift:[0-9]+:[0-9]+: (warning|error):" xcodebuild-device.log | sort -u || echo "none"
+          exit "${status:-0}"
