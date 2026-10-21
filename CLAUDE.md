@@ -6,8 +6,9 @@ to the user's Intervals.icu wellness record. It is a bridge, not an analysis
 tool: no charts, trends, baselines or readiness scores. Intervals.icu does that.
 
 Owner: Paul. Repo: mularmularmular/HRVbridge, **public** (since 20 Oct 2026),
-deliberately with **no licence**: do not add one. Public release planned
-(Google Play first, App Store later), free, donation link outside the app.
+deliberately with **no licence**: do not add one. Android as signed APK on
+GitHub Releases first; Google Play and App Store later. Free, donation link
+outside the app.
 
 ## Public repo rules
 
@@ -242,23 +243,40 @@ Draft connect-screen copy:
   ("Upload anyway" if unreliable). Pending = result, never uploaded, and the
   user tapped one of those (stored as `uploadOverride`, same JSON key).
 
-- Release signing (upload key): `app/build.gradle.kts` reads
+- Release signing: `app/build.gradle.kts` reads
   `HRVBRIDGE_KEYSTORE_PATH`, `HRVBRIDGE_KEYSTORE_PASSWORD`,
   `HRVBRIDGE_KEY_ALIAS`, `HRVBRIDGE_KEY_PASSWORD` from the environment, or
   `hrvbridge.keystore.path`, `hrvbridge.keystore.password`,
   `hrvbridge.key.alias`, `hrvbridge.key.password` from
   `~/.gradle/gradle.properties`. Without all four, release builds are
   unsigned (CI stays green). Never commit a keystore or passwords
-  (`*.jks`/`*.keystore` are gitignored). Paul creates the upload key once,
-  outside the repo, and keeps a backup:
+  (`*.jks`/`*.keystore` are gitignored). Paul creates the key once,
+  outside the repo:
   ```
-  keytool -genkeypair -v -keystore ~/keys/hrvbridge-upload.jks \
-    -alias upload -keyalg RSA -keysize 4096 -validity 10000
+  keytool -genkeypair -v -keystore ~/keys/signon-upload.jks \
+    -alias signon -keyalg RSA -keysize 4096 -validity 10000
   ```
-  then adds the four `hrvbridge.*` lines to `~/.gradle/gradle.properties`
-  and runs `./gradlew :app:bundleRelease`. Use Play App Signing: Google
-  holds the app signing key, this is only the upload key (resettable via
-  Play support if lost).
+  `.github/workflows/android-release.yml` signs with it from the GitHub
+  secrets `HRVBRIDGE_KEYSTORE_BASE64` (the .jks, base64), and
+  `HRVBRIDGE_KEYSTORE_PASSWORD`, `HRVBRIDGE_KEY_ALIAS`,
+  `HRVBRIDGE_KEY_PASSWORD`.
+
+## Android release (APK)
+
+- Pushing a tag `v<versionName>` (e.g. `v0.1.0-beta.1`) runs
+  `android-release.yml`: tests, signed `:app:assembleRelease`, a GitHub
+  Release with `SignON-<versionName>.apk`, its `.sha256` and the signing
+  certificate SHA-256 in the notes (prerelease for `-beta` tags). The tag
+  must equal `versionName`; bump `versionCode` by 1 for every release
+  (Android refuses to install a lower one over a higher one).
+- Same key forever: Android refuses an update signed with a different key,
+  and without Play there is no key reset. Paul keeps two offline backups
+  of the .jks and its passwords.
+- Android developer verification: sideloaded apps need a verified
+  developer from 2027 globally (30 Sep 2026 only in Brazil, Indonesia,
+  Singapore, Thailand). Before then Paul verifies his identity and
+  registers `fyi.paulmuller.signon` with this key's certificate in the
+  Android Developer Console. Plan: `docs/android-release-plan.md`.
 
 ## Later destinations (not now)
 
@@ -372,7 +390,7 @@ Draft connect-screen copy:
   mirror, because Maven Central rate-limits (429) the cloud egress IP.
 - Commands: `./gradlew :core:test`, `./gradlew :app:testDebugUnitTest`,
   `./gradlew :app:assembleDebug`, `./gradlew lint`.
-- GitHub Actions: on every push run `:core:test`, `:app:testDebugUnitTest` and `assembleDebug`, upload
+- GitHub Actions: on every push run `:core:test`, `:app:testDebugUnitTest`, `lint` and `assembleDebug`, upload
   the debug APK as an artifact.
 
 ## Morning questions (optional, decided by Paul 21 Oct 2026)

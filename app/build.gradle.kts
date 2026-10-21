@@ -13,7 +13,8 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        // The release tag must be v<versionName>; bump versionCode with every release.
+        versionName = "0.1.0-beta.1"
     }
 
     // Release signing (upload key) from the environment or ~/.gradle/gradle.properties,
@@ -37,6 +38,7 @@ android {
 
     buildTypes {
         release {
+            // shortcut: R8 off because the release build has never run on a device, turn on once a release APK has been smoke tested on a phone.
             isMinifyEnabled = false
             if (canSign) signingConfig = signingConfigs.getByName("release")
         }
