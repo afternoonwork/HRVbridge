@@ -118,7 +118,14 @@ outside the app.
    (opacity about 35% to 100% over each RR interval) while measuring only.
    Both also run with Reduce Motion (Paul, 21 Oct 2026): the hand sweeps
    smoothly every frame, and the breathing is an opacity change only.
-   The heart rate window is orange with white text.
+   The dial keeps one size from Connected through settling and
+   measuring, with or without poor contact (space is reserved for the
+   tallest active layout); only terminal states may shrink it, animated.
+   The heart rate window scales with the dial. While connected it is
+   filled #C84A16 (window only; ring, hand and heart stay accent
+   #E2561C) with white text; in faint and empty states it is plain (bg,
+   line border, ink text). "poor contact" is bold, auto-sized to fit,
+   never ellipsised. Titles are centred on both platforms.
 3. Measurement: 60 s wall-clock, collect all RR.
 4. Keep screen on (`FLAG_KEEP_SCREEN_ON`), foreground only. No background BLE.
 
@@ -357,8 +364,14 @@ Draft connect-screen copy:
   builds have a simulated strap (synthetic data, 1x/10x/60x); it and the
   raw recorder are on a debug-only page in Settings. UI per
   `docs/ui-implementation-brief.md`; `scripts/ios-snapshots.sh` screenshots
-  every state (`-uiSnapshot <name>`, debug builds) into the
-  `ios-screenshots` CI artifact. HRVCore is
+  states (`-uiSnapshot <name>`, debug builds; env `SNAPSHOT_STATES`,
+  space-separated or "all", and `SNAPSHOT_APPEARANCES`, "light", "dark" or
+  "light dark") into the `ios-screenshots` CI artifact. In CI this is
+  opt-in because it is slow (simulator start-up alone takes 3 to 8 min):
+  PRs labelled `screenshots` (all states, or only those on a
+  `snapshots: <names>` line in the PR body), or a manual run
+  (`gh workflow run ios.yml --ref <branch> -f states="dial settling" -f appearances=light`).
+  Pushes to main take none. Request only the states a change touches. HRVCore is
   linked as a local package (`XCLocalSwiftPackageReference ../HRVCore`).
 - CI: `.github/workflows/ios.yml` on `macos-26` with Xcode 26.3: HRVCore
   tests, then simulator and device-SDK builds without signing.
@@ -393,10 +406,14 @@ Draft connect-screen copy:
   `./gradlew :app:assembleDebug`, `./gradlew lint`.
 - GitHub Actions: on every push run `:core:test`, `:app:testDebugUnitTest`, `lint` and `assembleDebug`, upload
   the debug APK as an artifact.
+- iOS CI (`ios.yml`): HRVCore tests and both builds, about 2 min without
+  screenshots. Screenshots are opt-in (see the iOS App bullet).
 
 ## Morning questions (optional, decided by Paul 21 Oct 2026)
 
-- Off by default; Settings switch "Morning questions". When on, a result
+- Off by default; Settings switch "Morning questions". Its footer shows
+  the five question names (soreness, fatigue, motivation, injury,
+  sickness) in bold. When on, a result
   the user submits ("Upload to Intervals.icu" or "Upload anyway") waits on a questions
   page; "Upload" sends values and answers together, "Skip" sends values
   only. Answering without a measurement: skipped (not trivial).

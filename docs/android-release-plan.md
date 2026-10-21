@@ -107,6 +107,13 @@ What to do, in 2027 or earlier once Android users exist:
   move to the Play build without uninstalling. Choose "use my own key"
   then, not a Google-generated one.
 
+## Releases
+
+| Version | Date | Notes |
+|---------|------|-------|
+| 0.1.0-beta.1 | 21 Oct 2026 | First signed APK. The first release run failed on the apksigner label "V2 Signer"; fixed in #44 and rerun via `workflow_dispatch`. |
+| 0.1.0-beta.2 | 22 Oct 2026 (planned) | Stable dial size, scaled heart rate window, centred titles, portrait only, darker window orange, bold question names, opt-in iOS screenshots in CI. |
+
 ## 5. Google Play later
 
 Findings checked 21 Oct 2026, kept for when Play becomes worth it:
