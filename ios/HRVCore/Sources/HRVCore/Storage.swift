@@ -28,9 +28,11 @@ public struct SessionRecord: Sendable {
     public var uploadedAt: Date?
     /// The user chose "Upload anyway" for an unreliable result; retried like a reliable one.
     public var uploadOverride: Bool
+    /// Morning questions answered for this measurement; retries send them too.
+    public var answers: ReadinessAnswers?
 
     public init(startedAt: Date, date: LocalDate, config: SessionConfig, series: FilteredSeries, result: HrvResult?,
-                malformedPackets: Int, uploadedAt: Date?, uploadOverride: Bool = false) {
+                malformedPackets: Int, uploadedAt: Date?, uploadOverride: Bool = false, answers: ReadinessAnswers? = nil) {
         self.startedAt = startedAt
         self.date = date
         self.config = config
@@ -39,6 +41,16 @@ public struct SessionRecord: Sendable {
         self.malformedPackets = malformedPackets
         self.uploadedAt = uploadedAt
         self.uploadOverride = uploadOverride
+        self.answers = answers
+    }
+
+    /// What the upload sends: the result's values plus any answers.
+    public var wellnessValues: WellnessValues? {
+        result.map {
+            var v = WellnessValues(date: date, result: $0)
+            v.answers = answers
+            return v
+        }
     }
 
     public var fileName: String {
@@ -81,7 +93,8 @@ public struct SessionRecord: Sendable {
             },
             malformedPackets: dto.malformedPackets,
             uploadedAt: dto.uploadedAt.flatMap(ISO.date),
-            uploadOverride: dto.uploadOverride ?? false
+            uploadOverride: dto.uploadOverride ?? false,
+            answers: dto.answers
         )
     }
 
@@ -109,6 +122,7 @@ public struct SessionRecord: Sendable {
         var result: Result?
         var uploadedAt: String?
         var uploadOverride: Bool?
+        var answers: ReadinessAnswers?
 
         init(_ r: SessionRecord) {
             version = 1
@@ -130,6 +144,7 @@ public struct SessionRecord: Sendable {
             }
             uploadedAt = r.uploadedAt.map { ISO.string($0, fractional: true) }
             uploadOverride = r.uploadOverride
+            answers = r.answers
         }
 
         // Write explicit nulls like Android does, so the files look the same.
@@ -146,6 +161,7 @@ public struct SessionRecord: Sendable {
             try c.encode(result, forKey: .result)
             try c.encode(uploadedAt, forKey: .uploadedAt)
             try c.encode(uploadOverride, forKey: .uploadOverride)
+            try c.encode(answers, forKey: .answers)
         }
     }
 }
@@ -162,7 +178,7 @@ extension SessionRecord: Equatable {
         }
         return same(a.startedAt, b.startedAt) && a.date == b.date && a.config == b.config && a.series == b.series
             && a.result == b.result && a.malformedPackets == b.malformedPackets && same(a.uploadedAt, b.uploadedAt)
-            && a.uploadOverride == b.uploadOverride
+            && a.uploadOverride == b.uploadOverride && a.answers == b.answers
     }
 }
 

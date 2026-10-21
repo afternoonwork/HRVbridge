@@ -49,6 +49,9 @@ enum Snapshots {
         "not-enough-beats": MainScreenState(phase: .notEnoughBeats, handAngle: 720, strapConnected: true),
         "upload-failed": MainScreenState(phase: result(upload: .failed("HTTP 500")), handAngle: 720, strapConnected: true),
         "not-connected": MainScreenState(phase: result(upload: .notConnected), handAngle: 720, strapConnected: true),
+        "questions": MainScreenState(phase: .questions(ResultSummary(restingHr: 52, rmssd: 68.4, sdnn: 61.2, accepted: 64,
+                                                                     total: 64, reliable: true, upload: .awaitingAnswers)),
+                                     handAngle: 720, strapConnected: true),
     ]
 
     @ViewBuilder static func view(_ name: String) -> some View {
@@ -70,6 +73,13 @@ enum Snapshots {
         } else {
             switch name {
             case "dial": DialSheet()
+            case "questions-answered":
+                NavigationStack {
+                    QuestionsPage(initial: ReadinessAnswers(soreness: 2, fatigue: 1, motivation: 2, injury: 1, sick: false))
+                        .navigationTitle(Theme.appName)
+                        .navigationBarTitleDisplayMode(.inline)
+                }
+                .tint(Theme.ink)
             case "connect": ConnectSnapshot(phase: .idle, key: "")
             case "connect-rejected": ConnectSnapshot(phase: .problem(ConnectScreen.rejectedText), key: "abc123")
             case "connect-connected": ConnectSnapshot(phase: .connected(checked: true), key: "")

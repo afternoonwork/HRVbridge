@@ -6,6 +6,8 @@ import UIKit
 
 enum UploadStatus: Equatable {
     case none
+    /// Morning questions are on: the result waits for answers (or Skip) before uploading.
+    case awaitingAnswers
     case inProgress
     case uploaded
     case notConnected
@@ -41,6 +43,14 @@ final class MeasurementController {
 
     /// 0, 30, 60 or 90 s; remembered across launches.
     private(set) var stabilisationSeconds: Int
+
+    /// Optional morning questions after a result; off by default.
+    private(set) var questionsEnabled = UserDefaults.standard.bool(forKey: "morningQuestions")
+
+    func setQuestionsEnabled(_ on: Bool) {
+        questionsEnabled = on
+        UserDefaults.standard.set(on, forKey: "morningQuestions")
+    }
 
     func setStabilisation(_ seconds: Int) {
         stabilisationSeconds = seconds
@@ -188,8 +198,9 @@ final class MeasurementController {
         guard var r = record, r.result != nil, upload == .none else { return }
         log.add("UPLOAD", "user override for unreliable measurement")
         r.uploadOverride = true
+        record = r
         save(r)
-        startUpload(r)
+        uploadOrAsk(r)
     }
 
     /// Deletes all local session files. Keeps the API key; never touches Intervals.icu.
@@ -268,7 +279,7 @@ final class MeasurementController {
             save(r)
             setHand(720)
             log.add("RESULT", result.map { "\($0)" } ?? "no result")
-            if result?.reliable == true { startUpload(r) }
+            if result?.reliable == true { uploadOrAsk(r) }
         case .failed:
             stopTicking()
         default:
@@ -282,19 +293,44 @@ final class MeasurementController {
         UIApplication.shared.isIdleTimerDisabled = false
     }
 
+    private func uploadOrAsk(_ r: SessionRecord) {
+        if questionsEnabled {
+            upload = .awaitingAnswers
+        } else {
+            startUpload(r)
+        }
+    }
+
+    /// The morning questions page: answers (or nil for Skip), then everything uploads together.
+    func submitAnswers(_ answers: ReadinessAnswers?) {
+        guard upload == .awaitingAnswers, var r = record else { return }
+        if let answers, !answers.isEmpty {
+            r.answers = answers
+            record = r
+            save(r)
+            log.add("UPLOAD", "with answers: \(answers)")
+        }
+        startUpload(r)
+    }
+
     private func startUpload(_ r: SessionRecord) {
-        guard let result = r.result else { return }
+        guard let values = r.wellnessValues else { return }
         guard let key = apiKey else {
             upload = .notConnected
             log.add("UPLOAD", "not connected, session stays pending")
             return
         }
         upload = .inProgress
-        let spec = Intervals.putWellness(WellnessValues(date: r.date, result: result), apiKey: key)
+        let spec = Intervals.putWellness(values, apiKey: key)
         Task { [weak self] in
             guard let self else { return }
-            let res = await self.client.send(spec)
+            var res = await self.client.send(spec)
             self.log.add("UPLOAD", "\(res)")
+            // Sick day: a calendar event after the wellness values (idempotent per date).
+            if case .success = res, r.answers?.sick == true {
+                res = await self.client.send(Intervals.sickEvent(r.date, apiKey: key))
+                self.log.add("UPLOAD", "sick event: \(res)")
+            }
             switch res {
             case .success:
                 var done = self.record ?? r
@@ -321,7 +357,7 @@ final class MeasurementController {
         guard !batch.isEmpty else { return }
         retry = .inProgress
         log.add("RETRY", "\(batch.count) pending: \(batch.map { $0.date.description }.joined(separator: ", "))")
-        let values = batch.compactMap { r in r.result.map { WellnessValues(date: r.date, result: $0) } }
+        let values = batch.compactMap(\.wellnessValues)
         let spec = Intervals.putWellnessBulk(values, apiKey: key)
         Task { [weak self] in
             guard let self else { return }
@@ -330,11 +366,21 @@ final class MeasurementController {
             switch res {
             case .success:
                 let now = Date()
+                var sickFailed = false
                 for var r in batch {
+                    // A sick day also needs its calendar event; until that is sent, stay pending.
+                    if r.answers?.sick == true {
+                        let event = await self.client.send(Intervals.sickEvent(r.date, apiKey: key))
+                        self.log.add("RETRY", "sick event \(r.date): \(event)")
+                        guard case .success = event else {
+                            sickFailed = true
+                            continue
+                        }
+                    }
                     r.uploadedAt = now
                     self.save(r)
                 }
-                self.retry = .uploaded(batch.count)
+                self.retry = sickFailed ? .failed(reconnect: false) : .uploaded(batch.count)
             case .unauthorised:
                 self.retry = .failed(reconnect: true)
             default:

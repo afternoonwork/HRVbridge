@@ -50,12 +50,49 @@ public struct LocalDate: Equatable, Hashable, Comparable, Codable, CustomStringC
     }
 }
 
+/// Optional morning questions. Wellness fields use Intervals.icu's scale 1 to 4 (1 = best);
+/// `sick` true becomes a SICK calendar event. Unanswered questions are not sent.
+public struct ReadinessAnswers: Equatable, Codable, Sendable {
+    public var soreness: Int?
+    public var fatigue: Int?
+    public var motivation: Int?
+    public var injury: Int?
+    public var sick: Bool?
+
+    /// Values outside 1 to 4 are dropped.
+    public init(soreness: Int? = nil, fatigue: Int? = nil, motivation: Int? = nil, injury: Int? = nil, sick: Bool? = nil) {
+        func valid(_ v: Int?) -> Int? { v.flatMap { (1...4).contains($0) ? $0 : nil } }
+        self.soreness = valid(soreness)
+        self.fatigue = valid(fatigue)
+        self.motivation = valid(motivation)
+        self.injury = valid(injury)
+        self.sick = sick
+    }
+
+    /// Nothing that would be sent ("not sick" is not sent).
+    public var isEmpty: Bool {
+        soreness == nil && fatigue == nil && motivation == nil && injury == nil && sick != true
+    }
+
+    // Explicit nulls, like the rest of the session file.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(soreness, forKey: .soreness)
+        try c.encode(fatigue, forKey: .fatigue)
+        try c.encode(motivation, forKey: .motivation)
+        try c.encode(injury, forKey: .injury)
+        try c.encode(sick, forKey: .sick)
+    }
+}
+
 /// One day's values for the wellness record.
 public struct WellnessValues: Equatable, Sendable {
     public var date: LocalDate
     public var restingHr: Int
     public var hrvRmssd: Double
     public var hrvSdnn: Double
+    /// Answered morning questions, sent in the same PUT.
+    public var answers: ReadinessAnswers?
 
     public init(date: LocalDate, restingHr: Int, hrvRmssd: Double, hrvSdnn: Double) {
         self.date = date
@@ -177,8 +214,22 @@ public enum Intervals {
                         body: Data(body.utf8))
     }
 
+    /// Sick day: an Intervals.icu calendar event (not a wellness field). The uid is fixed per
+    /// date, so with upsertOnUid a retry updates the same event instead of adding one.
+    public static func sickEvent(_ date: LocalDate, apiKey: ApiKey, base: String = baseURL) -> HTTPRequestSpec {
+        request("POST", "\(base)/api/v1/athlete/0/events?upsertOnUid=true", apiKey,
+                #"{"category":"SICK","start_date_local":"\#(date)T00:00:00","name":"Sick","uid":"hrvbridge-sick-\#(date)"}"#)
+    }
+
     // Swift prints doubles in shortest round-trip form ("68.4", "61.0"), like Kotlin.
+    // Unanswered questions are left out, so they do not change the record.
     private static func fields(_ v: WellnessValues) -> String {
-        #""restingHR":\#(v.restingHr),"hrv":\#(v.hrvRmssd),"hrvSDNN":\#(v.hrvSdnn)"#
+        var s = #""restingHR":\#(v.restingHr),"hrv":\#(v.hrvRmssd),"hrvSDNN":\#(v.hrvSdnn)"#
+        if let a = v.answers {
+            for (name, value) in [("soreness", a.soreness), ("fatigue", a.fatigue), ("motivation", a.motivation), ("injury", a.injury)] {
+                if let value { s += #","\#(name)":\#(value)"# }
+            }
+        }
+        return s
     }
 }
