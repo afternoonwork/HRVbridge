@@ -219,6 +219,14 @@ struct MainScreenView: View {
     @State private var topHeight: CGFloat = 0
     @State private var belowHeight: CGFloat = 0
     @State private var keysHeight: CGFloat = 0
+    /// Heights of the step indicator, the tallest settling or measuring readout (also with poor
+    /// contact), and the Start key, measured hidden, so the dial keeps one size from Connected
+    /// through measuring. Terminal states only shrink it if they would not fit.
+    @State private var stepHeight: CGFloat = 0
+    @State private var belowProbe: CGFloat = 0
+    @State private var keysProbe: CGFloat = 0
+    /// Off until the first layouts are measured, so opening the screen does not animate.
+    @State private var animateDial = false
 
     var body: some View {
         if case .questions = state.phase {
@@ -230,16 +238,24 @@ struct MainScreenView: View {
 
     private var dialLayout: some View {
         GeometryReader { geo in
-            let spare = geo.size.height - topHeight - 8 - Space.stepsToDial - belowSpacing - belowHeight - keysHeight - 8
+            let running = topHeight + Space.dialToReadout - 12 + belowProbe + keysProbe + 12 + Space.bottom
+            let current = topHeight + belowSpacing + belowHeight + keysHeight
+            // Active states (poor contact included) keep the reserved size; only terminal states may shrink it.
+            let active: Bool = {
+                if case .connected = state.phase { return true }
+                return state.isMeasuring
+            }()
+            let spare = geo.size.height - 8 - Space.stepsToDial - (active ? running : max(running, current)) - 8
             let dialSize = max(160, min(HeartDial.size(forWidth: geo.size.width), spare))
             ScrollView {
                 VStack(spacing: 0) {
                     top
-                        .frame(minHeight: 28)
+                        .frame(minHeight: max(28, stepHeight))
                         .onGeometryChange(for: CGFloat.self, of: \.size.height) { topHeight = $0 }
                         .padding(.top, 8)
                     dial
                         .frame(width: dialSize, height: dialSize)
+                        .animation(animateDial ? .easeInOut(duration: 0.25) : nil, value: dialSize)
                         .padding(.top, Space.stepsToDial)
                     below
                         .onGeometryChange(for: CGFloat.self, of: \.size.height) { belowHeight = $0 }
@@ -249,6 +265,7 @@ struct MainScreenView: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
+            .background(alignment: .top) { probes }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 keys
                     .frame(maxWidth: .infinity)
@@ -259,6 +276,31 @@ struct MainScreenView: View {
             }
         }
         .background(Theme.bg.ignoresSafeArea())
+        .task {
+            try? await Task.sleep(for: .milliseconds(500))
+            animateDial = true
+        }
+    }
+
+    /// Not shown: measures the views the dial must leave room for, at the content width.
+    private var probes: some View {
+        VStack(spacing: 0) {
+            StepIndicator(current: .settle)
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { stepHeight = $0 }
+            ZStack {
+                MainScreenView(state: MainScreenState(phase: .settling(secondsLeft: 60, poorContact: false))).below
+                MainScreenView(state: MainScreenState(phase: .measuring(secondsLeft: 60, beats: 60, poorContact: false))).below
+                MainScreenView(state: MainScreenState(phase: .settling(secondsLeft: 60, poorContact: true))).below
+                MainScreenView(state: MainScreenState(phase: .measuring(secondsLeft: 60, beats: 60, poorContact: true))).below
+            }
+            .padding(.horizontal, Space.margin)
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { belowProbe = $0 }
+            MainScreenView(state: MainScreenState(phase: .connected(""))).keys
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { keysProbe = $0 }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .hidden()
+        .accessibilityHidden(true)
     }
 
     /// While measuring the hand sweeps with the wall clock every frame, also with Reduce

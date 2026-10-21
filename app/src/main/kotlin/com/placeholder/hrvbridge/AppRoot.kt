@@ -23,7 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -226,7 +226,7 @@ private fun SettingsRoute(controller: MeasurementController, back: () -> Unit, d
     Scaffold(
         containerColor = hrv.bg,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text(stringResource(R.string.settings), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = { BackButton(back) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = hrv.bg, titleContentColor = hrv.ink),
@@ -267,7 +267,7 @@ private fun DebugLogRoute(controller: MeasurementController, back: () -> Unit) {
     Scaffold(
         containerColor = hrv.bg,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text(stringResource(R.string.debug_log), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = { BackButton(back) },
                 actions = {

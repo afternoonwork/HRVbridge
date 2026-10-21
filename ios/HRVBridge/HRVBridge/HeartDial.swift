@@ -96,28 +96,30 @@ struct HeartDial: View {
     /// the plain window.
     private func window(_ r: CGFloat) -> some View {
         let filled = !model.faint && model.window != .heartRate(nil)
+        // 96 x 46 at a 264 dial (R 132), scaled with the dial.
+        let k = r / 132
         return ZStack {
-            RoundedRectangle(cornerRadius: 10).fill(filled ? Theme.accentFill : Theme.bg)
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 10 * k).fill(filled ? Theme.accentFill : Theme.bg)
+            RoundedRectangle(cornerRadius: 10 * k)
                 .strokeBorder(LinearGradient(colors: [.black.opacity(scheme == .dark ? 0.4 : filled ? 0.2 : 0.08), .clear],
                                              startPoint: .top, endPoint: .bottom), lineWidth: 2)
-            if !filled { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line, lineWidth: 1) }
+            if !filled { RoundedRectangle(cornerRadius: 10 * k).strokeBorder(Theme.line, lineWidth: 1) }
             switch model.window {
             case let .heartRate(hr):
                 Text(hr.map(String.init) ?? "")
-                    .font(.system(size: hrSize, weight: .semibold).monospacedDigit())
+                    .font(.system(size: hrSize * k, weight: .semibold).monospacedDigit())
                     .foregroundStyle(filled ? .white : Theme.ink)
                     .minimumScaleFactor(0.5)
             case let .label(text):
-                // On orange: white on #C84A16 is 4.7:1, so the 14 pt bold label meets WCAG AA.
+                // On orange: white on #C84A16 is 4.7:1, so the bold label (14 pt at 264, at least 12) meets WCAG AA.
                 Text(text)
-                    .font(filled ? .system(size: 14, weight: .bold) : .footnote.weight(.semibold))
+                    .font(filled ? .system(size: max(12, 14 * k), weight: .bold) : .footnote.weight(.semibold))
                     .foregroundStyle(filled ? .white : Theme.ink2)
                     .minimumScaleFactor(0.6)
             }
         }
         .lineLimit(1)
-        .frame(width: 96, height: 46)
+        .frame(width: 96 * k, height: 46 * k)
         .offset(y: 0.379 * r)
     }
 
