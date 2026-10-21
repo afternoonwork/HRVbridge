@@ -42,7 +42,10 @@ val DarkHrvColors = HrvColors(
     dark = true,
 )
 
-val LocalHrvColors = staticCompositionLocalOf { LightHrvColors }
+/** The filled dial window behind white text, in both themes: darker than the accent so white reaches 4.7:1. */
+val WindowFill = Color(0xFFC84A16)
+
+val LocalHrvColors =staticCompositionLocalOf { LightHrvColors }
 
 /** Readout styles outside the Material type scale. All in sp, so they follow font scaling. */
 object Readout {
