@@ -5,11 +5,8 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Modifier
+import com.placeholder.hrvbridge.ui.HrvTheme
 
 class MainActivity : ComponentActivity() {
     private val controller: MeasurementController by viewModels()
@@ -25,10 +22,8 @@ class MainActivity : ComponentActivity() {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
             }
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    MeasurementScreen(controller)
-                }
+            HrvTheme {
+                AppRoot(controller)
             }
         }
     }
