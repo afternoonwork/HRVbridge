@@ -1,7 +1,9 @@
 import SwiftUI
 
 /// What the dial shows. The hand angle is cumulative degrees: settling is the first turn
-/// (0 to 360), measuring the second (360 to 720), done is parked at 720. It only increases.
+/// (0 to 360), measuring the second (360 to 720), done is parked at 720. The hand sweeps
+/// with the wall clock like a seconds hand (decided 21 Oct 2026); beats show as the
+/// orange ring breathing, not as hand steps.
 struct DialModel: Equatable {
     enum Window: Equatable {
         case heartRate(Int?)
@@ -33,6 +35,9 @@ struct DialModel: Equatable {
 struct HeartDial: View {
     let model: DialModel
     var accessibilityText: String = ""
+    /// Set while measuring: on each accepted beat the orange ring eases up to full
+    /// opacity and fades back to about 55% over that beat's RR interval.
+    var pulse: BeatPulse?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
     @ScaledMetric(relativeTo: .title) private var hrSize: CGFloat = 32
@@ -81,9 +86,12 @@ struct HeartDial: View {
                         style: StrokeStyle(lineWidth: outer - inner, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
                 .frame(width: mid * 2, height: mid * 2)
-                .animation(model.bandAngle == 0 ? nil : handAnimation, value: model.bandAngle)
+                .modifier(Breathing(pulse: breathing ? pulse : nil))
         }
     }
+
+    /// Only the orange measuring ring breathes, and not with Reduce Motion.
+    private var breathing: Bool { model.band == .measure && !reduceMotion && pulse != nil }
 
     private func drawTicks(_ ctx: GraphicsContext, size: CGSize, r: CGFloat) {
         let c = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -139,7 +147,6 @@ struct HeartDial: View {
                     .frame(width: 2, height: length + tail)
                     .offset(y: -(length - tail) / 2)
                     .rotationEffect(.degrees(model.handAngle))
-                    .animation(model.handAngle == 0 ? nil : handAnimation, value: model.handAngle)
                 Circle().fill(colour).frame(width: 14, height: 14)
                 Circle().fill(Theme.surface).frame(width: 4, height: 4)
             }
@@ -147,13 +154,30 @@ struct HeartDial: View {
         }
     }
 
-    /// 120 ms with a little overshoot; none with Reduce Motion. A reset to 12 (0 degrees,
-    /// e.g. after Done) jumps instead of sweeping back.
-    private var handAnimation: Animation? {
-        reduceMotion ? nil : .spring(response: 0.12, dampingFraction: 0.7)
-    }
-
     private func point(_ c: CGPoint, _ angle: CGFloat, _ radius: CGFloat) -> CGPoint {
         CGPoint(x: c.x + radius * sin(angle), y: c.y - radius * cos(angle))
+    }
+}
+
+/// The ring "breathing" with the heart: up quickly, then a smooth fade over the rest of
+/// the beat (never on/off). Without a pulse the ring is fully opaque.
+private struct Breathing: ViewModifier {
+    let pulse: BeatPulse?
+
+    func body(content: Content) -> some View {
+        if let pulse {
+            // RR is on the session clock; the simulated strap may run it faster.
+            let beat = max(0.3, pulse.rrMs / 1000 / Clock.currentSpeed)
+            content.keyframeAnimator(initialValue: 0.55, trigger: pulse.id) { view, opacity in
+                view.opacity(opacity)
+            } keyframes: { _ in
+                KeyframeTrack {
+                    CubicKeyframe(1.0, duration: beat * 0.25)
+                    CubicKeyframe(0.55, duration: beat * 0.75)
+                }
+            }
+        } else {
+            content
+        }
     }
 }

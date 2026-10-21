@@ -2,10 +2,9 @@ package com.placeholder.hrvbridge.ui
 
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -17,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import com.placeholder.hrvbridge.BeatPulse
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -45,7 +46,9 @@ import kotlin.math.sin
 
 /**
  * What the dial shows. The hand angle is cumulative degrees: settling is the first
- * turn (0 to 360), measuring the second (360 to 720), done parks it at 720.
+ * turn (0 to 360), measuring the second (360 to 720), done parks it at 720. The hand
+ * sweeps with the clock like a seconds hand (decided 21 Oct 2026); beats show as the
+ * orange ring breathing, not as hand steps.
  */
 @Immutable
 data class DialModel(
@@ -91,15 +94,28 @@ fun animationsOff(): Boolean {
     }
 }
 
-/** The heart rate dial, drawn in code. [jump] moves the hand without animation (reset). */
+/** The heart rate dial, drawn in code. */
 @Composable
-fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, jump: Boolean = false,
+fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: BeatPulse? = null,
               description: String = "") {
     val c = hrv
-    val still = animationsOff() || jump
-    val handSpec = if (still) snap() else spring<Float>(dampingRatio = 0.7f, stiffness = Spring.StiffnessHigh)
-    val angle by animateFloatAsState(model.handAngle.toFloat(), handSpec, label = "hand")
-    val band by animateFloatAsState(model.bandAngle.toFloat(), handSpec, label = "band")
+    // The hand follows the clock (the caller updates the model per frame); no smoothing here.
+    val angle = model.handAngle.toFloat()
+    val band = model.bandAngle.toFloat()
+    // Breathing: on each accepted beat the orange ring eases up to full opacity and fades
+    // back to about 55% over that beat's RR interval. Only while measuring, never with
+    // Remove animations; otherwise fully opaque.
+    val breathing = model.band == DialModel.Band.MEASURE && pulse != null && pulse.id > 0 && !animationsOff()
+    val ringAlpha = remember { Animatable(1f) }
+    LaunchedEffect(pulse?.id, breathing) {
+        if (!breathing || pulse == null) {
+            ringAlpha.snapTo(1f)
+            return@LaunchedEffect
+        }
+        val beat = pulse.rrMs.toInt().coerceAtLeast(300)
+        ringAlpha.animateTo(1f, tween(beat / 4, easing = FastOutSlowInEasing))
+        ringAlpha.animateTo(0.55f, tween(beat * 3 / 4, easing = FastOutSlowInEasing))
+    }
     val handColor by animateColorAsState(
         if (model.hand == DialModel.Hand.ACCENT) c.accent else c.ink,
         if (animationsOff()) snap() else tween(200), label = "handColour",
@@ -134,7 +150,7 @@ fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, jump: B
                 val mid = rp * (0.932f + 0.970f) / 2
                 val w = rp * (0.970f - 0.932f)
                 drawArc(
-                    color = if (model.band == DialModel.Band.MEASURE) c.accent else c.ink2.copy(alpha = 0.45f),
+                    color = if (model.band == DialModel.Band.MEASURE) c.accent.copy(alpha = ringAlpha.value) else c.ink2.copy(alpha = 0.45f),
                     startAngle = -90f, sweepAngle = min(band, 360f), useCenter = false,
                     topLeft = Offset(centre.x - mid, centre.y - mid), size = Size(mid * 2, mid * 2),
                     style = Stroke(width = w, cap = StrokeCap.Butt),

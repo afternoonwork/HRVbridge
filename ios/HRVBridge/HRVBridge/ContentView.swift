@@ -97,7 +97,11 @@ final class AppModel {
     var mainState: MainScreenState {
         var s = MainScreenState(phase: strapPhase)
         if let hr = central.latest?.heartRate, hr > 0 { s.heartRate = hr }
-        s.handAngle = measurement.handAngle
+        if let clock = measurement.phaseClock {
+            s.handClock = clock
+            s.handAngle = clock.angle(at: Clock.nowMs())
+            if clock.turn == 1 { s.pulse = measurement.pulse }
+        }
         s.settlingSeconds = measurement.stabilisationSeconds
         s.strapConnected = central.isConnected
         s.cancelled = measurement.cancelledInBackground

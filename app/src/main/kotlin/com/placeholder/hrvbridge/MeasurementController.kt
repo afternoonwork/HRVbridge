@@ -42,6 +42,21 @@ sealed interface RetryStatus {
     data class Failed(val reconnect: Boolean) : RetryStatus
 }
 
+/**
+ * The running phase on the source clock: the hand makes one turn over settling
+ * (turn 0) and one over the measurement (turn 1), like a seconds hand.
+ */
+data class PhaseClock(val startMs: Long, val durationMs: Long, val turn: Int) {
+    /** Cumulative degrees: settling 0 to 360, measuring 360 to 720. */
+    fun angle(nowMs: Long): Double {
+        val f = if (durationMs > 0) (nowMs - startMs).toDouble() / durationMs else 1.0
+        return turn * 360 + f.coerceIn(0.0, 1.0) * 360
+    }
+}
+
+/** One accepted beat while measuring: [id] changes per beat, [rrMs] is its length. */
+data class BeatPulse(val id: Int = 0, val rrMs: Double = 0.0)
+
 /** The strap, independent of a measurement (main screen rows above the dial). */
 sealed interface StrapState {
     data object Idle : StrapState
@@ -107,17 +122,11 @@ class MeasurementController @JvmOverloads constructor(
     /** Latest heart rate from the strap, null before the first packet. */
     var heartRate by mutableStateOf<Int?>(null)
         private set
-    /** Arrival time of the latest beat that moved the hand, on the source clock. */
-    var lastBeatMs by mutableStateOf<Long?>(null)
+    /** The running phase on the source clock, for the sweeping hand; null when not measuring. */
+    var phaseClock by mutableStateOf<PhaseClock?>(null)
         private set
-    /**
-     * Cumulative hand angle in degrees: settling 0 to 360, measuring 360 to 720,
-     * done 720. Only increases during a measurement.
-     */
-    var handAngle by mutableStateOf(0.0)
-        private set
-    /** True when the hand should jump without animation (reset, or 0 s settling). */
-    var handJump by mutableStateOf(true)
+    /** Changes on every accepted beat while measuring (the ring breathes). */
+    var pulse by mutableStateOf(BeatPulse())
         private set
     /** Result of the last key check; null before a check or while it runs. */
     var keyCheck by mutableStateOf<KeyCheck?>(null)
@@ -317,7 +326,7 @@ class MeasurementController @JvmOverloads constructor(
                 parsed?.heartRate?.takeIf { it > 0 }?.let { heartRate = it }
                 val session = s ?: current ?: return
                 session.onPacket(bytes, timeMs)
-                moveHand(parsed?.rrIntervalsMs.orEmpty(), timeMs, session.state)
+                pulseBeats(parsed?.rrIntervalsMs.orEmpty(), session.state)
                 publish()
             }
 
@@ -477,13 +486,13 @@ class MeasurementController @JvmOverloads constructor(
     private fun publish() {
         val s = current ?: return
         val state = s.state
+        updatePhaseClock(state)
         if (state == session) return
         if (state::class != session?.let { it::class }) log.add("PHASE", state.summary())
         session = state
         when (state) {
             is SessionState.Finished -> {
                 if (keepStrap) handler.removeCallbacks(ticker) else stopSource()
-                setHand(720.0)
                 val r = SessionRecord(
                     startedAt = startedAt ?: Instant.now(wallClock),
                     // The wellness record is the local day the measurement started, not ended.
@@ -532,44 +541,44 @@ class MeasurementController @JvmOverloads constructor(
     }
 
     /**
-     * The hand steps per beat: every beat while settling, accepted beats while
-     * measuring (same filter as the result; the result itself comes from the session).
+     * Accepted beats while measuring make the orange ring breathe (same filter as
+     * the result; the result itself comes from the session).
      */
-    private fun moveHand(rr: List<Double>, timeMs: Long, state: SessionState) {
-        if (rr.isEmpty()) return
-        when (state) {
-            is SessionState.Stabilising -> if (running.stabilisationMs > 0) {
-                val total = running.stabilisationMs.toDouble()
-                lastBeatMs = timeMs
-                setHand((total - state.remainingMs) / total * 360)
-            }
-            is SessionState.Measuring -> {
-                val first = measuringRr.size
-                measuringRr.addAll(rr)
-                val accepted = ArtefactFilter.filter(measuringRr, running.filter).accepted
-                if (accepted.subList(first, accepted.size).none { it }) return
-                val total = running.measurementMs.toDouble()
-                lastBeatMs = timeMs
-                // With 0 s settling there is no first turn: jump to 12 without spinning.
-                if (handAngle < 360 && running.stabilisationMs == 0L) {
-                    handJump = true
-                    handAngle = 360.0
-                }
-                setHand(360 + (total - state.remainingMs) / total * 360)
-            }
-            else -> Unit
-        }
+    private fun pulseBeats(rr: List<Double>, state: SessionState) {
+        if (rr.isEmpty() || state !is SessionState.Measuring) return
+        // The session restarts the measurement on poor contact before the check.
+        if (measuringRr.size + rr.size != state.beats) measuringRr = ArrayList()
+        val first = measuringRr.size
+        measuringRr.addAll(rr)
+        val accepted = ArtefactFilter.filter(measuringRr, running.filter).accepted
+        val last = (accepted.size - 1 downTo first).firstOrNull { accepted[it] } ?: return
+        pulse = BeatPulse(pulse.id + 1, measuringRr[last])
     }
 
-    private fun setHand(angle: Double) {
-        handJump = false
-        handAngle = maxOf(handAngle, minOf(angle, 720.0))
+    /**
+     * The hand follows the clock like a seconds hand: anchor the current phase on
+     * the session's remaining time (it holds while contact is poor before the check).
+     */
+    private fun updatePhaseClock(state: SessionState) {
+        val (remaining, duration, turn) = when (state) {
+            is SessionState.Stabilising -> Triple(state.remainingMs, running.stabilisationMs, 0)
+            is SessionState.Measuring -> Triple(state.remainingMs, running.measurementMs, 1)
+            else -> {
+                phaseClock = null
+                return
+            }
+        }
+        val start = nowMs() - (duration - remaining)
+        val c = phaseClock
+        if (c != null && c.turn == turn && kotlin.math.abs(c.startMs - start) < 100) return
+        phaseClock = PhaseClock(start, duration, turn)
     }
+
+    /** The source clock that [phaseClock] uses. */
+    fun nowMs(): Long = source?.nowMs() ?: 0
 
     private fun resetHand() {
-        handJump = true
-        handAngle = 0.0
-        lastBeatMs = null
+        phaseClock = null
         measuringRr = ArrayList()
     }
 

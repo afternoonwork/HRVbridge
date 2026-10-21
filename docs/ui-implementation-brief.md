@@ -107,31 +107,29 @@ Build the dial as one reusable view (`HeartDial` in SwiftUI, `HeartDial` composa
 | Hub | radius 7, centre dot radius 2 | same as hand; dot surface |
 | Faint | ticks and numerals at 35% opacity |  |
 
-**Hand and band rules**
+**Hand and band rules** (replaced 21 Oct 2026 after Paul's iPhone test)
 
-- The hand angle is cumulative and only ever increases. Settling is the first turn: angle = (t − settleStart) / settleDuration × 360. Measuring is the second: angle = 360 + (t − measureStart) / 60 s × 360. Done: 720 (parked at 12). With settling 0 s there is no first turn.
-- `t` is the arrival time of the latest accepted beat, not the wall clock. The hand therefore jumps by each beat's real length. Countdowns use the wall clock.
-- The band runs from 12 to the hand within the current turn. Done, reliable: full accent ring. Unreliable or not enough beats: full grey ring.
-- During measuring, rejected beats do not move the hand. During settling, every beat does.
+- The hand sweeps continuously like a mechanical watch's seconds hand, driven by the wall clock: one revolution over the settling period, one over the 60 s measurement, parked at 12 when done. The angle is cumulative: settling 0 to 360, measuring 360 to 720, done 720. With settling 0 s there is no first turn.
+- The band runs from 12 to the hand within the current turn (it follows the hand). Done, reliable: full accent ring. Unreliable or not enough beats: full grey ring.
+- Heartbeats are shown by the orange ring "breathing" in time with the heart, not by the hand: on each accepted beat the ring's opacity eases up and fades back down over that beat's RR interval (smooth, never on/off; roughly 55% to 100%). Only while measuring; settling and done states are static.
 - Hand and hub switch from ink to accent as the hand crosses 12 into measuring.
 - The window updates on every strap packet (about 1 Hz), without animation.
 
-To make this possible, the measurement controller must expose the timestamp of the latest accepted beat (and of every beat during settling) alongside the phase. Expose it from the existing session state; do not change the maths.
+The measurement controller exposes the running phase's start and length on its clock (for the hand) and a pulse per accepted beat with its RR (for the ring). The per-beat hand and the latest-beat timestamp are gone.
 
 ## Motion and haptics
 
-Motion is driven by data: if no beat arrives, nothing moves.
-
-- **Hand step:** 120 ms, ease-out with about 4% overshoot; a new beat retargets the running animation. Starting points to tune on the device: SwiftUI `.spring(response: 0.12, dampingFraction: 0.7)`, Compose `spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessHigh)`.
+- **Hand:** a continuous sweep with the wall clock, redrawn every frame (SwiftUI `TimelineView(.animation)`, Compose `withFrameMillis`).
+- **Breathing ring:** per accepted beat, opacity up over about a quarter of the RR interval, then a smooth fade back over the rest (iOS `keyframeAnimator`, Android `Animatable`).
 - **Colour change** into measuring: 200 ms cross-fade of hand and hub.
 - **Keys:** press scales to 0.98 and drops the outer shadow in 90 ms. Use a custom `ButtonStyle` on iOS and `Button` / `OutlinedButton` / `TextButton` with a pill shape on Android, so pressed states and accessibility come from the system.
-- **Reduce Motion** (iOS) / **Remove animations** (Android): the hand jumps with no easing or overshoot; colours switch instantly. Spinners stay system spinners.
+- **Reduce Motion** (iOS) / **Remove animations** (Android): no breathing; the hand still moves (it carries information) but without smoothing, updated once a second; colours switch instantly. Spinners stay system spinners.
 - **Screen:** keep it on while measuring (`isIdleTimerDisabled`, `FLAG_KEEP_SCREEN_ON`); foreground only, as today.
 
 | Moment | iOS `.sensoryFeedback` | Android `performHapticFeedback` |
 | --- | --- | --- |
 | Strap connected | `.success` | `CONFIRM` |
-| Recording starts (hand crosses 12) | `.impact(weight: .medium)` | `CONFIRM` |
+| Recording starts (measurement begins) | `.impact(weight: .medium)` | `CONFIRM` |
 | Poor contact appears | `.warning` | `REJECT` |
 | Finished, reliable | `.success` | `CONFIRM` |
 | Finished, unreliable | `.warning` | `REJECT` |
@@ -162,7 +160,7 @@ Motion is driven by data: if no beat arrives, nothing moves.
 1. The settling time picker moves from the main screen to Settings; the main screen states the value in words.
 2. Stop asks for confirmation instead of cancelling at once.
 3. After "Save key", make one authenticated read call to Intervals.icu to check the key and show "key rejected" on 401/403. Test it against a local server only: no live Intervals.icu calls from cloud sessions.
-4. The measurement controller exposes the latest accepted beat's timestamp (and every beat's during settling) so the hand can step per beat. No change to filtering or maths.
+4. ~~Per-beat hand~~ Replaced on 21 Oct 2026: the hand sweeps with the wall clock and beats show as the breathing ring (see Hand and band rules). No change to filtering or maths.
 5. An unreliable or too-short result offers "Repeat", which starts a new measurement with the same strap.
 
 **Changes after Paul's iPhone test (21 Oct 2026, these replace the text above where they differ):**
@@ -170,6 +168,7 @@ Motion is driven by data: if no beat arrives, nothing moves.
 1. Copy: never name other apps. "Close other apps that connect to your heart rate monitor." in the no-strap notice and the couldn't-connect warning.
 2. Copy: "sit still", never "lie still".
 3. No separate signal check phase. The RR-presence and plausibility checks run on the first 10 s of settling (or of the measurement when settling is 0 s) and abort with the same failure messages. The step indicator has three steps: settle, measure, upload; the strap row shows the connection. Poor contact before the check has passed holds the phase's clock, as before.
+4. Dial motion: a wall-clock seconds hand plus a breathing orange ring for heartbeats (see Hand and band rules and Motion).
 
 **Key check endpoint (verified 21 Oct 2026 in the live OpenAPI spec):** `GET https://intervals.icu/api/v1/athlete/0/wellness/{today}` ("Get wellness record for date", local ISO-8601 day). It needs only the same wellness access as the upload and returns a small record: 2xx = key valid, 401/403 = key rejected, anything else = "couldn't check, saved anyway". (`GET /api/v1/athlete/{id}` also exists but returns the full athlete with sport settings.)
 
@@ -183,7 +182,7 @@ Motion is driven by data: if no beat arrives, nothing moves.
 
 - [ ] Every state in the Screens and states table is reachable and matches the canvas on the iPhone SE (375 x 667) without scrolling during a measurement
 - [ ] Light and dark both checked; no pure white or black backgrounds
-- [ ] Hand steps once per accepted beat, never moves backwards, crosses 12 into recording
+- [ ] Hand sweeps with the wall clock, never moves backwards, crosses 12 into recording; the orange ring breathes once per accepted beat while measuring
 - [ ] Reduce Motion / Remove animations removes easing
 - [ ] Haptics fire only at the listed moments
 - [ ] VoiceOver and TalkBack read the dial and steps as specified

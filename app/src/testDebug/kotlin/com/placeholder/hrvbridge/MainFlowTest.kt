@@ -41,26 +41,33 @@ class MainFlowTest {
     }
 
     @Test
-    fun handOnlyMovesForwardAndParksAtTwelveWhenDone() {
+    fun handSweepsWithTheClockAndRingBreathesOnlyWhileMeasuring() {
         val c = connected()
         c.setSettling(30)
         c.startMeasurement()
         assertTrue(c.session is SessionState.Stabilising)
-        var last = c.handAngle
-        var sawSettling = false
+        val settle = c.phaseClock!!
+        assertEquals(0, settle.turn)
+        assertEquals(30_000, settle.durationMs)
+        var last = settle.angle(c.nowMs())
+        var pulsesWhileSettling = 0
         var sawMeasuring = false
         repeat(400) {
             looper.idleFor(Duration.ofMillis(10))
-            assertTrue("hand went back from $last to ${c.handAngle}", c.handAngle >= last)
-            last = c.handAngle
-            if (c.session is SessionState.Stabilising && c.handAngle in 1.0..359.9) sawSettling = true
-            if (c.session is SessionState.Measuring && c.handAngle in 360.1..719.9) sawMeasuring = true
+            val clock = c.phaseClock ?: return@repeat
+            val angle = clock.angle(c.nowMs())
+            assertTrue("hand went back from $last to $angle", angle >= last)
+            last = angle
+            if (c.session is SessionState.Stabilising) pulsesWhileSettling = c.pulse.id
+            if (c.session is SessionState.Measuring && angle in 360.1..719.9) sawMeasuring = true
         }
-        assertTrue(sawSettling)
+        assertEquals("no breathing while settling", 0, pulsesWhileSettling)
         assertTrue(sawMeasuring)
         assertTrue(c.session is SessionState.Finished)
-        assertEquals(720.0, c.handAngle, 0.0)
-        assertNotNull(c.lastBeatMs)
+        assertNull("done: the dial is static", c.phaseClock)
+        // About one pulse per accepted beat of the 60 s measurement (clean vector, 60 bpm).
+        assertTrue("pulses ${c.pulse.id}", c.pulse.id in 50..70)
+        assertTrue(c.pulse.rrMs in 300.0..2000.0)
     }
 
     @Test
@@ -72,7 +79,7 @@ class MainFlowTest {
         assertTrue(c.session is SessionState.Finished)
         c.finishMeasurement()
         assertNull(c.session)
-        assertEquals(0.0, c.handAngle, 0.0)
+        assertNull(c.phaseClock)
         assertEquals(StrapState.Connected("Simulated strap"), c.strap)
         c.measureAgain { error("strap is still connected") }
         // Settling 0 s: straight into the measurement (its first 10 s hold the check).

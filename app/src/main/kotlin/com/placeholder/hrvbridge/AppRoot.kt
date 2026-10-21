@@ -197,6 +197,7 @@ private fun MainRoute(controller: MeasurementController, openSettings: () -> Uni
                     },
                 ),
                 dialDescription = dialDescription,
+                now = controller::nowMs,
             )
         }
     }
@@ -347,8 +348,9 @@ private fun mainState(c: MeasurementController): MainScreenState {
     return MainScreenState(
         phase = phase,
         heartRate = c.heartRate,
-        handAngle = c.handAngle,
-        handJump = c.handJump,
+        handAngle = c.phaseClock?.angle(c.nowMs()) ?: 0.0,
+        handClock = c.phaseClock,
+        pulse = c.pulse.takeIf { c.phaseClock?.turn == 1 },
         settlingSeconds = c.settlingSeconds,
         strapConnected = c.strap is StrapState.Connected,
         cancelled = c.cancelledInBackground,
