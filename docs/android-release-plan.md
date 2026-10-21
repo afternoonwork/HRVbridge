@@ -28,7 +28,7 @@ for users are in `README.md`.
 | B1 | Release workflow pushed | Paul | The gh token lacks the `workflow` scope, so the workflow commit of PR #42 could not be pushed. Fix: `gh auth refresh -h github.com -s workflow`, then push the branch. |
 | B2 | Signing key and four GitHub secrets | Paul | Without them the release workflow fails on purpose (no unsigned releases). Steps in section 2. |
 | B3 | Launcher icon | Agent (PR #41), Paul approves | Without it the app shows the default Android icon. |
-| B4 | Privacy policy final text | Agent drafts, Paul fills contact | `docs/privacy-policy.md` still has `[date]`, `[URL]` and `[Name], [email address]`. The README links to it; the repo copy is enough as the URL, no separate hosting needed for the APK route. |
+| B4 | Privacy policy final text | Done (docs/contact PR) | `docs/privacy-policy.md` is final: effective date 21 October 2026, contact Paul Müller, signon(at)paulmuller.fyi, URL of the file on GitHub. The README links to it; the repo copy is enough as the URL, no separate hosting needed for the APK route. |
 | B5 | First real test on an Android phone with a strap | Paul finds a tester | BLE and the Keystore have never run on a device. Until then every release is a beta and its first users are the testers. |
 
 Not blockers (checked):
@@ -52,7 +52,7 @@ Not blockers (checked):
 | 21 to 23 Oct | Create the signing key once: `keytool -genkeypair -v -keystore ~/keys/signon-upload.jks -alias signon -keyalg RSA -keysize 4096 -validity 10000` | P |
 | same day | Store it as secrets (each command prompts, nothing in shell history): `base64 -i ~/keys/signon-upload.jks \| gh secret set HRVBRIDGE_KEYSTORE_BASE64 -R mularmularmular/HRVbridge`, then `gh secret set HRVBRIDGE_KEYSTORE_PASSWORD`, `HRVBRIDGE_KEY_ALIAS` (`signon`) and `HRVBRIDGE_KEY_PASSWORD`, each with `-R mularmularmular/HRVbridge`. | P |
 | same day | Back up the .jks and both passwords twice, offline, in two places. Losing the key means users can never update; there is no reset outside Play. | P |
-| by 24 Oct | Privacy policy final text: effective date, contact, URL of the file on GitHub. | A, Paul fills contact |
+| by 24 Oct | Privacy policy final text: effective date, contact, URL of the file on GitHub. Done (docs/contact PR). | A |
 | by 24 Oct | `git tag v0.1.0-beta.1 && git push origin v0.1.0-beta.1`. Check the release page: APK, `.sha256`, certificate fingerprint in the notes. | P |
 | from 24 Oct | Find a first tester with an Android phone and a chest strap (training partners, then a post in the Intervals.icu forum). Ask them to install from Releases, measure, upload, and send the debug log (never posted in the repo or issues). | P |
 | as reports come in | Fix what the device tests find (BLE scan and GATT, permission flow, Keystore). Each fix: bump `versionName` and `versionCode`, tag, release. | A, then P tags |
