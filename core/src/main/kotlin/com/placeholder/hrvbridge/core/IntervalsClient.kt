@@ -61,6 +61,10 @@ class IntervalsClient(
     fun checkKey(credential: Credential, date: LocalDate): KeyCheck =
         KeyCheck.of(send("GET", Intervals.wellnessUrl(date, baseUrl), credential, null, null, logBody = false))
 
+    /** Sick day calendar event for [date]; idempotent per date. */
+    fun postSickEvent(credential: Credential, date: LocalDate): ApiResult =
+        send("POST", Intervals.eventsUrl(baseUrl), credential, JSON, Intervals.sickEventBody(date), logBody = true)
+
     fun disconnect(credential: Credential): ApiResult =
         send("DELETE", Intervals.disconnectUrl(baseUrl), credential, null, null, logBody = false)
 

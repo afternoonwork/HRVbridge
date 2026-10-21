@@ -45,7 +45,10 @@ class IntervalsUploader(
 
     override fun upload(values: WellnessValues, onResult: (UploadResult) -> Unit) {
         executor.execute {
-            val r = when (val res = client.putWellness(credential, values)) {
+            var res = client.putWellness(credential, values)
+            // Sick day: a calendar event after the wellness values (idempotent per date).
+            if (res is ApiResult.Success && values.answers?.sick == true) res = client.postSickEvent(credential, values.date)
+            val r = when (res) {
                 is ApiResult.Success -> UploadResult.Success("HTTP ${res.code}")
                 is ApiResult.Unauthorised -> UploadResult.Failure("HTTP ${res.code}", reconnect = true)
                 is ApiResult.HttpError -> UploadResult.Failure("HTTP ${res.code}")

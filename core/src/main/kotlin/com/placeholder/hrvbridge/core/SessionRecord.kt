@@ -19,7 +19,12 @@ data class SessionRecord(
     val uploadedAt: Instant?,
     /** The user chose "Upload anyway" for an unreliable result; retried like a reliable one. */
     val uploadOverride: Boolean = false,
+    /** Morning questions answered for this measurement; retries send them too. */
+    val answers: ReadinessAnswers? = null,
 ) {
+    /** What the upload sends: the result's values plus any answers. */
+    fun wellnessValues(): WellnessValues? = result?.let { WellnessValues.from(date, it).copy(answers = answers) }
+
     val fileName: String
         get() = "session-" + startedAt.truncatedTo(ChronoUnit.SECONDS).toString().replace(':', '-') + ".json"
 
@@ -59,6 +64,15 @@ data class SessionRecord(
             },
             "uploadedAt" to uploadedAt?.toString(),
             "uploadOverride" to uploadOverride,
+            "answers" to answers?.let {
+                linkedMapOf(
+                    "soreness" to it.soreness,
+                    "fatigue" to it.fatigue,
+                    "motivation" to it.motivation,
+                    "injury" to it.injury,
+                    "sick" to it.sick,
+                )
+            },
         ),
     )
 
@@ -110,6 +124,15 @@ data class SessionRecord(
                 malformedPackets = (root["malformedPackets"] as Number).toInt(),
                 uploadedAt = (root["uploadedAt"] as String?)?.let(Instant::parse),
                 uploadOverride = root["uploadOverride"] as Boolean? ?: false,
+                answers = (root["answers"] as Map<*, *>?)?.let {
+                    ReadinessAnswers.of(
+                        soreness = (it["soreness"] as Number?)?.toInt(),
+                        fatigue = (it["fatigue"] as Number?)?.toInt(),
+                        motivation = (it["motivation"] as Number?)?.toInt(),
+                        injury = (it["injury"] as Number?)?.toInt(),
+                        sick = it["sick"] as Boolean?,
+                    )
+                },
             )
         }
 

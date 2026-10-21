@@ -102,6 +102,9 @@ class ScreenshotTest {
         }
         render("connect-connected-$suffix", dark) { ConnectScreen("", {}, ConnectPhase.Connected(true), {}, {}) }
         render("settings-$suffix", dark) { SettingsContent(60, SettingsActions()) }
+        render("questions-$suffix", dark) {
+            com.placeholder.hrvbridge.ui.QuestionsPage({}, initial = com.placeholder.hrvbridge.core.ReadinessAnswers.of(2, 1, 2, 1, false))
+        }
     }
 
     // One activity for all images; each image gets a fresh ComposeView (composed on attach).
