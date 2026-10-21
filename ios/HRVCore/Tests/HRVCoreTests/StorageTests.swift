@@ -61,6 +61,21 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(store.list().count, 7)
     }
 
+    func testRetryIgnoresNewerUnsubmittedSession() throws {
+        let store = SessionStore(directory: dir)
+        try store.save(record("2026-10-19T05:30:00Z", override: true))
+        try store.save(record("2026-10-19T06:10:00Z")) // newer, never submitted
+        XCTAssertEqual(store.retryBatch().map { ISO8601DateFormatter().string(from: $0.startedAt) },
+                       ["2026-10-19T05:30:00Z"])
+    }
+
+    func testRetryNeverOverwritesNewerSubmittedSession() throws {
+        let store = SessionStore(directory: dir)
+        try store.save(record("2026-10-19T05:30:00Z", override: true))
+        try store.save(record("2026-10-19T06:10:00Z", uploadedAt: Date(), override: true))
+        XCTAssertTrue(store.retryBatch().isEmpty)
+    }
+
     func testDeleteAllRemovesOnlySessionFiles() throws {
         let store = SessionStore(directory: dir)
         try store.save(record("2026-10-19T05:30:00Z"))

@@ -231,10 +231,11 @@ Draft connect-screen copy:
     `ScreenshotTest` renders every state into the `android-screenshots`
     CI artifact.
 - Retry failed uploads on next app open (WorkManager only if really needed).
-  Done: on app open (and right after saving a key) the newest pending
-  session per date is sent in one `PUT wellness-bulk`
-  (`SessionStore.retryBatch()`), so an older session never overwrites a
-  newer value of the same day. Nothing uploads automatically (Paul, 21 Oct
+  Done: on app open (and right after saving a key) the newest submitted
+  session per date is sent, if not yet uploaded, in one `PUT wellness-bulk`
+  (`SessionStore.retryBatch()`), so an older submission never overwrites a
+  newer one of the same day, and an unsubmitted newer session does not block
+  an older submitted one. Nothing uploads automatically (Paul, 21 Oct
   2026): the result screen shows the values and "Upload to Intervals.icu"
   ("Upload anyway" if unreliable). Pending = result, never uploaded, and the
   user tapped one of those (stored as `uploadOverride`, same JSON key).

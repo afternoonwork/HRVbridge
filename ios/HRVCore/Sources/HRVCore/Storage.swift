@@ -213,12 +213,13 @@ public struct SessionStore: Sendable {
 
     public func pendingUploads() -> [SessionRecord] { list().filter(\.isPending) }
 
-    /// For each date only the newest session, and only if that one is pending, so an
-    /// older session never overwrites a newer value of the same day. Newest date first.
+    /// For each date only the newest submitted session, and only if it is not uploaded yet,
+    /// so an older submission never overwrites a newer one of the same day, and an
+    /// unsubmitted newer session does not block an older submitted one. Newest date first.
     public func retryBatch() -> [SessionRecord] {
-        Dictionary(grouping: list(), by: \.date).values
+        Dictionary(grouping: list().filter { $0.result != nil && $0.uploadOverride }, by: \.date).values
             .compactMap { $0.max { $0.startedAt < $1.startedAt } }
-            .filter(\.isPending)
+            .filter { $0.uploadedAt == nil }
             .sorted { $0.date > $1.date }
     }
 }

@@ -109,8 +109,9 @@ struct HeartDial: View {
                     .foregroundStyle(filled ? .white : Theme.ink)
                     .minimumScaleFactor(0.5)
             case let .label(text):
+                // On orange: 14 pt bold counts as large text, so white on #E2561C (3.8:1) passes.
                 Text(text)
-                    .font(.footnote.weight(.bold))
+                    .font(filled ? .system(size: 14, weight: .bold) : .footnote.weight(.semibold))
                     .foregroundStyle(filled ? .white : Theme.ink2)
                     .minimumScaleFactor(0.6)
             }
