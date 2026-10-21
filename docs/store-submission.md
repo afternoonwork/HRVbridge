@@ -11,6 +11,9 @@ wording changes.
 - Package ID (Play) and bundle ID (App Store): `fyi.paulmuller.signon`.
 - App Store subtitle (30 characters max): "Morning HRV and rHR".
 - Google Play short description (80 characters max): "Morning HRV and rHR".
+- Portrait only on both platforms. iOS is iPhone-only (runs on iPad in
+  compatibility mode), so App Store screenshots are iPhone only; no iPad
+  screenshots are needed. Play: phone screenshots in portrait.
 
 ## Facts the answers rest on
 
