@@ -301,7 +301,7 @@ Draft connect-screen copy:
   Security > Developer Mode (restart); after the first install, trust the
   developer in Settings > General > VPN & Device Management. Then:
   ```
-  git fetch origin && git checkout -B ios/sim-strap origin/ios/sim-strap
+  git fetch origin && git checkout main && git pull --ff-only
   xcode-select -p   # must be Xcode 26.3, else: sudo xcode-select -s /Volumes/<SSD>/Xcode.app
   xcrun devicectl list devices   # note the iPhone's Identifier
   xcodebuild -project ios/HRVBridge/HRVBridge.xcodeproj -scheme HRVBridge \
