@@ -327,6 +327,23 @@ Draft connect-screen copy:
 - GitHub Actions: on every push run `:core:test`, `:app:testDebugUnitTest` and `assembleDebug`, upload
   the debug APK as an artifact.
 
+## Store decisions (Paul, 21 Oct 2026)
+
+Details in `docs/store-submission.md`.
+- No data collected or shared, on both stores: there is no developer
+  server, and values go only to the user's own Intervals.icu account with
+  the user's own key. Apple: Data Not Collected (`PrivacyInfo.xcprivacy`
+  declares no collected types). Play: not declared, per Google's Data
+  safety example of uploads to the user's own cloud account.
+- Data deletion request: not applicable (no collected data, no accounts).
+- Location (Play): "Only to scan for Bluetooth heart rate straps on
+  Android 11 and older; location is never accessed."
+- Backups: platform defaults; users control backups in their phone
+  settings. Only the API key is excluded.
+- App Review: video of the app on a physical iPhone pairing with the
+  strap, plus an optional test API key from a throwaway Intervals.icu
+  account. Release checklist in `docs/store-submission.md`.
+
 ## Open questions
 
 - Intervals.icu says apps used by more than one person should use OAuth.
