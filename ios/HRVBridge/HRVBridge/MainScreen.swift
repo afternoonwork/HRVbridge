@@ -1,0 +1,438 @@
+import HRVCore
+import SwiftUI
+
+/// A finished measurement with a result, plus its upload state.
+struct ResultSummary: Equatable {
+    var restingHr: Int
+    var rmssd: Double
+    var sdnn: Double
+    var accepted: Int
+    var total: Int
+    var reliable: Bool
+    var upload: UploadStatus
+}
+
+/// Everything the main screen shows, as a plain value (also used for the CI screenshots).
+enum MainPhase: Equatable {
+    case noStrap
+    case searching([DiscoveredStrap])
+    case connecting(String)
+    case connected(String)
+    case couldNotConnect(String)
+    case bluetooth(HeartRateCentral.BluetoothProblem)
+    case checking(secondsLeft: Int, poorContact: Bool)
+    case settling(secondsLeft: Int, poorContact: Bool)
+    case measuring(secondsLeft: Int, beats: Int, poorContact: Bool)
+    case failed(FailReason)
+    case result(ResultSummary)
+    case notEnoughBeats
+}
+
+struct MainScreenState: Equatable {
+    var phase: MainPhase
+    var heartRate: Int?
+    var handAngle: Double = 0
+    var settlingSeconds = 60
+    var strapConnected = false
+    /// The last measurement was cancelled because the app left the screen.
+    var cancelled = false
+    /// Retry of earlier uploads on open: footnote under the strap row.
+    var retryLine: String?
+
+    var isMeasuring: Bool {
+        switch phase {
+        case .checking, .settling, .measuring: return true
+        default: return false
+        }
+    }
+
+    var poorContact: Bool {
+        switch phase {
+        case let .checking(_, poor), let .settling(_, poor), let .measuring(_, _, poor): return poor
+        default: return false
+        }
+    }
+
+    /// Moments with haptics (apart from "connected" and "poor contact", tracked separately).
+    enum Milestone: Equatable { case recording, finishedReliable, finishedUnreliable, uploaded, problem }
+
+    var milestone: Milestone? {
+        switch phase {
+        case .measuring: return handAngle >= 360 ? .recording : nil
+        case .couldNotConnect, .failed: return .problem
+        case .notEnoughBeats: return .finishedUnreliable
+        case let .result(r):
+            switch r.upload {
+            case .uploaded: return .uploaded
+            case .failed, .reconnectNeeded: return .problem
+            case .none, .inProgress, .notConnected: return r.reliable ? .finishedReliable : .finishedUnreliable
+            }
+        default: return nil
+        }
+    }
+
+    // MARK: Dial
+
+    var dial: DialModel {
+        switch phase {
+        case .noStrap, .couldNotConnect: return DialModel(window: .label("no strap"), faint: true)
+        case .searching: return DialModel(window: .label("searching"), faint: true)
+        case .connecting: return DialModel(window: .label("connecting"), faint: true)
+        case let .bluetooth(problem):
+            switch problem {
+            case .off: return DialModel(window: .label("Bluetooth off"), faint: true)
+            case .notAllowed: return DialModel(window: .label("no access"), faint: true)
+            case .unsupported: return DialModel(window: .label("no strap"), faint: true)
+            }
+        case .connected:
+            return DialModel(window: .heartRate(heartRate), hand: .ink)
+        case let .checking(_, poor):
+            return DialModel(window: poor ? .label("poor contact") : .heartRate(heartRate), hand: .ink)
+        case let .settling(_, poor), let .measuring(_, _, poor):
+            return .running(hr: heartRate, handAngle: handAngle, poorContact: poor)
+        case let .failed(reason):
+            if reason == .noData || reason == .disconnected || heartRate == nil {
+                return DialModel(window: .label("no strap"), faint: true)
+            }
+            return DialModel(window: .heartRate(heartRate))
+        case let .result(r):
+            return DialModel(window: .heartRate(r.restingHr), hand: r.reliable ? .accent : .ink, handAngle: 720,
+                             band: r.reliable ? .measure : .muted, bandAngle: 360)
+        case .notEnoughBeats:
+            return DialModel(window: .heartRate(nil), hand: .ink, handAngle: 720, band: .muted, bandAngle: 360)
+        }
+    }
+
+    /// Phase name, announced immediately when it changes.
+    var phaseTitle: String {
+        switch phase {
+        case .noStrap: return "No strap connected"
+        case .searching: return "Looking for heart rate straps"
+        case let .connecting(name): return "Connecting to \(name)"
+        case let .connected(name): return "\(name) connected"
+        case .couldNotConnect, .bluetooth, .failed: return "Problem"
+        case .checking: return "Checking signal"
+        case .settling: return "Settling"
+        case .measuring: return "Recording"
+        case let .result(r): return r.reliable ? "Finished" : "Finished, unreliable"
+        case .notEnoughBeats: return "Finished, not enough beats"
+        }
+    }
+
+    /// The dial as one accessibility element.
+    var dialAccessibility: String {
+        var parts: [String] = []
+        switch phase {
+        case let .result(r): parts.append("Resting heart rate \(r.restingHr) beats per minute.")
+        case .notEnoughBeats: parts.append("No result.")
+        default:
+            if case let .label(text) = dial.window {
+                parts.append("Heart rate dial, \(text).")
+            } else if let hr = heartRate {
+                parts.append("Heart rate \(hr) beats per minute.")
+            }
+        }
+        switch phase {
+        case let .checking(s, _): parts.append("Checking signal, \(s) seconds left.")
+        case let .settling(s, _): parts.append("Settling, \(s) seconds left.")
+        case let .measuring(s, _, _): parts.append("Recording, \(s) seconds left.")
+        default: break
+        }
+        return parts.joined(separator: " ")
+    }
+
+    /// The warning on screen, if any (announced when it appears).
+    var warning: String? {
+        switch phase {
+        case let .couldNotConnect(name):
+            return "Couldn't connect to \(name). Check the strap is on and the electrodes are moist, and close other apps that may be connected to it."
+        case let .bluetooth(problem):
+            switch problem {
+            case .off: return "Bluetooth is off. Turn it on in Control Centre or Settings, then try again."
+            case .notAllowed: return "Bluetooth access is not allowed. HRV Bridge needs it to find your strap. Allow it in Settings."
+            case .unsupported: return "This device does not support Bluetooth LE."
+            }
+        case let .failed(reason): return Self.failText(reason)
+        case .notEnoughBeats: return "Not enough beats to calculate results. Please repeat."
+        case let .result(r):
+            switch r.upload {
+            case .none:
+                return r.reliable ? nil
+                    : "Measurement unreliable, please repeat. \(r.total - r.accepted) of \(r.total) beats were discarded."
+            case .inProgress, .uploaded: return nil
+            case .notConnected: return "Not uploaded: connect to Intervals.icu first. It will upload once you have saved your key."
+            case .reconnectNeeded: return "Intervals.icu did not accept the stored key. Please reconnect."
+            case .failed: return "Upload failed. Your result is saved on this phone. The app will try again next time it opens."
+            }
+        default:
+            if poorContact { return "Poor contact. Moisten the electrodes and make sure the strap fits snugly." }
+            if cancelled { return "The measurement was cancelled because the app left the screen. Keep it open while measuring." }
+            return nil
+        }
+    }
+
+    static func failText(_ reason: FailReason) -> String {
+        switch reason {
+        case .noData: return "No data was received from the strap."
+        case .noRR: return "This sensor does not send beat-to-beat data."
+        case .implausible: return "The strap's beat-to-beat data does not match its heart rate. Check the strap and try again."
+        case .disconnected: return "The strap disconnected."
+        }
+    }
+}
+
+struct MainActions {
+    var findStrap: () -> Void = {}
+    var connect: (UUID) -> Void = { _ in }
+    var start: () -> Void = {}
+    var stop: () -> Void = {}
+    var done: () -> Void = {}
+    /// After a failed measurement, or "Repeat": a new measurement with the same strap.
+    var again: () -> Void = {}
+    var uploadAnyway: () -> Void = {}
+    var openSettings: () -> Void = {}
+}
+
+/// The main screen for a given state. The dial stays in place; only the rows above and the
+/// text and key below change.
+struct MainScreenView: View {
+    let state: MainScreenState
+    var dialAccessibility: String?
+    var actions = MainActions()
+
+    var body: some View {
+        GeometryReader { geo in
+            let dialSize = HeartDial.size(forWidth: geo.size.width)
+            ScrollView {
+                VStack(spacing: 0) {
+                    top
+                        .frame(minHeight: 28)
+                        .padding(.top, 8)
+                    HeartDial(model: state.dial, accessibilityText: dialAccessibility ?? state.dialAccessibility)
+                        .frame(width: dialSize, height: dialSize)
+                        .padding(.top, Space.stepsToDial)
+                    below
+                        .padding(.top, belowSpacing)
+                }
+                .padding(.horizontal, Space.margin)
+                .frame(maxWidth: .infinity)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                keys
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 12)
+                    .padding(.bottom, Space.bottom)
+                    .background(Theme.bg)
+            }
+        }
+        .background(Theme.bg.ignoresSafeArea())
+    }
+
+    private var belowSpacing: CGFloat {
+        switch state.phase {
+        case .result, .notEnoughBeats: return Space.dialToMetrics
+        default: return Space.dialToReadout - 12
+        }
+    }
+
+    // MARK: Above the dial
+
+    @ViewBuilder private var top: some View {
+        switch state.phase {
+        case .noStrap, .couldNotConnect, .bluetooth:
+            strapRow(StatusLine(mark: .hollow, text: "No strap connected"))
+        case .searching:
+            strapRow(StatusLine(mark: .spinner, text: "Looking for heart rate straps…"))
+        case let .connecting(name):
+            strapRow(StatusLine(mark: .spinner, text: "Connecting to \(name)…"))
+        case let .connected(name):
+            VStack(spacing: 12) {
+                if state.cancelled, let w = state.warning { Notice(text: w, warning: true) }
+                strapRow(StatusLine(mark: .ink, bold: name, text: "connected"))
+            }
+        case let .checking(_, poor):
+            StepIndicator(current: .check, mark: poor ? .hollow : .ink)
+        case let .settling(_, poor):
+            StepIndicator(current: .settle, mark: poor ? .hollow : .ink)
+        case let .measuring(_, _, poor):
+            StepIndicator(current: .measure, mark: poor ? .hollow : .accent)
+        case .failed:
+            StepIndicator(current: .check, mark: .hollow)
+        case let .result(r):
+            StepIndicator(current: .upload, mark: r.upload == .uploaded ? .accent : .hollow)
+        case .notEnoughBeats:
+            StepIndicator(current: .upload, mark: .hollow)
+        }
+    }
+
+    private func strapRow(_ line: StatusLine) -> some View {
+        VStack(spacing: 4) {
+            line
+            if let retry = state.retryLine {
+                Text(retry).font(.footnote).foregroundStyle(Theme.ink2).multilineTextAlignment(.center)
+            }
+        }
+    }
+
+    // MARK: Below the dial
+
+    @ViewBuilder private var below: some View {
+        switch state.phase {
+        case .noStrap:
+            Notice(text: "Put the strap on and moisten the electrodes. Close Polar Flow and other apps that may be connected to it.")
+        case let .searching(found):
+            strapList(found)
+        case .connecting:
+            EmptyView()
+        case .connected:
+            VStack(spacing: 4) {
+                Text("Lie still, then start.").font(.subheadline).foregroundStyle(Theme.ink)
+                Text(state.settlingSeconds == 0 ? "No settling time, then a 60 s measurement."
+                                                : "\(state.settlingSeconds) s settling, then a 60 s measurement.")
+                    .font(.footnote).foregroundStyle(Theme.ink2)
+            }
+            .multilineTextAlignment(.center)
+        case .couldNotConnect, .bluetooth, .failed, .notEnoughBeats:
+            if let w = state.warning { Notice(text: w, warning: true) }
+        case let .checking(s, poor):
+            readout(mark: nil, label: "Checking signal", seconds: s,
+                    detail: "Making sure the strap sends beat-to-beat data.", poor: poor)
+        case let .settling(s, poor):
+            readout(mark: nil, label: "Settling", seconds: s, detail: "Lie still and breathe normally.", poor: poor)
+        case let .measuring(s, beats, poor):
+            readout(mark: .accent, label: "Recording", seconds: s,
+                    detail: beats == 1 ? "1 beat recorded" : "\(beats) beats recorded", poor: poor)
+        case let .result(r):
+            result(r)
+        }
+    }
+
+    private func strapList(_ found: [DiscoveredStrap]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(found.enumerated()), id: \.element.id) { i, strap in
+                if i > 0 { Divider().overlay(Theme.line).padding(.leading, 16) }
+                Button { actions.connect(strap.id) } label: {
+                    HStack {
+                        Text(strap.name).font(.body).foregroundStyle(Theme.ink)
+                        Spacer()
+                        if strap.rssi != 0 {
+                            Text("\(strap.rssi) dBm").font(.footnote).foregroundStyle(Theme.ink2)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Connects to this strap")
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line, lineWidth: 1))
+    }
+
+    @ViewBuilder private func readout(mark: StatusMark?, label: String, seconds: Int, detail: String,
+                                      poor: Bool) -> some View {
+        if poor {
+            VStack(spacing: 12) {
+                HStack(spacing: 6) {
+                    if let mark { StatusDot(mark: mark) }
+                    Text(label).font(.subheadline.weight(.semibold))
+                    Text("\(seconds) s").font(.subheadline.monospacedDigit())
+                }
+                .foregroundStyle(Theme.ink)
+                .accessibilityElement(children: .combine)
+                if let w = state.warning { Notice(text: w, warning: true) }
+            }
+        } else {
+            VStack(spacing: 4) {
+                HStack(spacing: 6) {
+                    if let mark { StatusDot(mark: mark).accessibilityHidden(true) }
+                    Text(label).font(.subheadline).foregroundStyle(Theme.ink)
+                }
+                Text("\(seconds) s").font(.readoutTimer).foregroundStyle(Theme.ink)
+                    .accessibilityLabel("\(seconds) seconds left")
+                Text(detail).font(.footnote).foregroundStyle(Theme.ink2)
+            }
+            .multilineTextAlignment(.center)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    @ViewBuilder private func result(_ r: ResultSummary) -> some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 40) {
+                metric("rMSSD", r.rmssd, dim: !r.reliable)
+                metric("SDNN", r.sdnn, dim: !r.reliable)
+            }
+            Text("\(r.accepted) of \(r.total) beats used").font(.footnote).foregroundStyle(Theme.ink2)
+            switch r.upload {
+            case .inProgress:
+                StatusLine(mark: .spinner, text: "Uploading to Intervals.icu…")
+            case .uploaded:
+                HStack(spacing: 6) {
+                    StatusLine(mark: .accent, text: "Uploaded to Intervals.icu")
+                    Image(systemName: "checkmark").font(.footnote.weight(.semibold)).foregroundStyle(Theme.ink)
+                        .accessibilityHidden(true)
+                }
+            default:
+                if let w = state.warning { Notice(text: w, warning: true) }
+            }
+        }
+    }
+
+    private func metric(_ name: String, _ value: Double, dim: Bool) -> some View {
+        VStack(spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(String(format: "%.1f", value)).font(.readoutValue)
+                Text("ms").font(.footnote)
+            }
+            .foregroundStyle(dim ? Theme.ink2 : Theme.ink)
+            Text(name).font(.caption).foregroundStyle(Theme.ink2)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Keys
+
+    @ViewBuilder private var keys: some View {
+        switch state.phase {
+        case .noStrap:
+            Button("Find strap", action: actions.findStrap).buttonStyle(KeyStyle())
+        case .searching, .connecting, .bluetooth(.unsupported):
+            EmptyView()
+        case .connected:
+            Button(action: actions.start) {
+                HStack(spacing: 8) {
+                    Circle().fill(Theme.accent).frame(width: 8, height: 8).accessibilityHidden(true)
+                    Text("Start")
+                }
+            }
+            .buttonStyle(KeyStyle())
+        case .couldNotConnect, .bluetooth(.off):
+            Button("Try again", action: actions.findStrap).buttonStyle(KeyStyle())
+        case .bluetooth(.notAllowed):
+            Button("Open Settings", action: actions.openSettings).buttonStyle(KeyStyle())
+        case .checking, .settling, .measuring:
+            Button("Stop", action: actions.stop).buttonStyle(KeyStyle(kind: .secondary))
+        case let .failed(reason):
+            if reason == .noRR {
+                Button("Done", action: actions.done).buttonStyle(KeyStyle())
+            } else {
+                Button("Try again", action: actions.again).buttonStyle(KeyStyle())
+            }
+        case let .result(r):
+            if !r.reliable && r.upload == .none {
+                VStack(spacing: 4) {
+                    Button("Repeat", action: actions.again).buttonStyle(KeyStyle())
+                    Button("Upload anyway", action: actions.uploadAnyway).buttonStyle(TextKeyStyle())
+                }
+            } else {
+                Button("Done", action: actions.done).buttonStyle(KeyStyle())
+            }
+        case .notEnoughBeats:
+            Button("Repeat", action: actions.again).buttonStyle(KeyStyle())
+        }
+    }
+}

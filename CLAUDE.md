@@ -311,7 +311,11 @@ Draft connect-screen copy:
   (2 min raw notification capture, JSON via share sheet),
   `MeasurementController` (session, storage in Application Support/sessions,
   upload, retry), `KeychainStore`, `IntervalsClient` (URLSession). Debug
-  builds have a simulated strap (synthetic data, 1x/10x/60x). HRVCore is
+  builds have a simulated strap (synthetic data, 1x/10x/60x); it and the
+  raw recorder are on a debug-only page in Settings. UI per
+  `docs/ui-implementation-brief.md`; `scripts/ios-snapshots.sh` screenshots
+  every state (`-uiSnapshot <name>`, debug builds) into the
+  `ios-screenshots` CI artifact. HRVCore is
   linked as a local package (`XCLocalSwiftPackageReference ../HRVCore`).
 - CI: `.github/workflows/ios.yml` on `macos-26` with Xcode 26.3: HRVCore
   tests, then simulator and device-SDK builds without signing.
