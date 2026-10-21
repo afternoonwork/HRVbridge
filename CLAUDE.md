@@ -217,6 +217,24 @@ Draft connect-screen copy:
   newer value of the same day. Pending = never uploaded, with a result that
   is reliable or that the user chose to "Upload anyway".
 
+- Release signing (upload key): `app/build.gradle.kts` reads
+  `HRVBRIDGE_KEYSTORE_PATH`, `HRVBRIDGE_KEYSTORE_PASSWORD`,
+  `HRVBRIDGE_KEY_ALIAS`, `HRVBRIDGE_KEY_PASSWORD` from the environment, or
+  `hrvbridge.keystore.path`, `hrvbridge.keystore.password`,
+  `hrvbridge.key.alias`, `hrvbridge.key.password` from
+  `~/.gradle/gradle.properties`. Without all four, release builds are
+  unsigned (CI stays green). Never commit a keystore or passwords
+  (`*.jks`/`*.keystore` are gitignored). Paul creates the upload key once,
+  outside the repo, and keeps a backup:
+  ```
+  keytool -genkeypair -v -keystore ~/keys/hrvbridge-upload.jks \
+    -alias upload -keyalg RSA -keysize 4096 -validity 10000
+  ```
+  then adds the four `hrvbridge.*` lines to `~/.gradle/gradle.properties`
+  and runs `./gradlew :app:bundleRelease`. Use Play App Signing: Google
+  holds the app signing key, this is only the upload key (resettable via
+  Play support if lost).
+
 ## Later destinations (not now)
 
 - Health Connect: `HeartRateVariabilityRmssdRecord`, `RestingHeartRateRecord`

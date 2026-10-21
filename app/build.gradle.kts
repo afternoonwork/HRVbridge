@@ -16,9 +16,29 @@ android {
         versionName = "0.1.0"
     }
 
+    // Release signing (upload key) from the environment or ~/.gradle/gradle.properties,
+    // never from the repo. Without all four values release builds stay unsigned (CI).
+    val signingValues = listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD").associateWith { name ->
+        providers.environmentVariable("HRVBRIDGE_$name")
+            .orElse(providers.gradleProperty("hrvbridge." + name.lowercase().replace('_', '.')))
+            .orNull
+    }
+    val canSign = signingValues.values.all { !it.isNullOrBlank() }
+    if (canSign) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(signingValues.getValue("KEYSTORE_PATH")!!)
+                storePassword = signingValues.getValue("KEYSTORE_PASSWORD")
+                keyAlias = signingValues.getValue("KEY_ALIAS")
+                keyPassword = signingValues.getValue("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (canSign) signingConfig = signingConfigs.getByName("release")
         }
     }
 
