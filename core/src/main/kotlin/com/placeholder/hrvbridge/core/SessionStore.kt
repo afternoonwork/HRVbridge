@@ -15,6 +15,13 @@ class SessionStore(private val dir: File) {
         }
     }
 
+    /** "Delete all measurements": removes every session file (and leftover temp files). Returns the count. */
+    fun deleteAll(): Int {
+        val files = dir.listFiles { f -> f.name.startsWith("session-") } ?: return 0
+        files.filter { it.name.endsWith(".tmp") }.forEach { it.delete() }
+        return files.count { it.name.endsWith(".json") && it.delete() }
+    }
+
     /** Newest first; unreadable files are skipped. */
     fun list(): List<SessionRecord> =
         (dir.listFiles { f -> f.name.startsWith("session-") && f.name.endsWith(".json") } ?: emptyArray())

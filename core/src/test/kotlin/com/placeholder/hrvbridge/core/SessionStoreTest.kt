@@ -107,6 +107,18 @@ class SessionStoreTest {
     }
 
     @Test
+    fun deleteAllRemovesOnlySessionFiles() {
+        store.save(record("2026-10-19T05:30:00Z"))
+        store.save(record("2026-10-20T05:30:00Z"))
+        dir.resolve("session-garbage.json").writeText("{")
+        dir.resolve("other.txt").writeText("keep")
+        assertEquals(3, store.deleteAll())
+        assertEquals(emptyList(), store.list())
+        assertEquals(listOf("other.txt"), dir.list()!!.toList())
+        assertEquals(0, SessionStore(dir.resolve("missing")).deleteAll())
+    }
+
+    @Test
     fun createsDirectoryOnDemand() {
         val nested = SessionStore(dir.resolve("a/b"))
         nested.save(record("2026-10-20T05:30:00Z"))

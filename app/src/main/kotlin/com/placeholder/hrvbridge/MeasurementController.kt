@@ -252,6 +252,20 @@ class MeasurementController @JvmOverloads constructor(
         credential = null
     }
 
+    /**
+     * Deletes all local session files and the debug log. Keeps the stored API key
+     * and never touches Intervals.icu. Not while a measurement is running.
+     */
+    fun deleteAllMeasurements(): Int {
+        if (isActive) return 0
+        reset()
+        record = null
+        retry = RetryStatus.None
+        val n = runCatching { sessions.deleteAll() }.getOrDefault(0)
+        log.clear()
+        return n
+    }
+
     /** Debug log plus the session JSON. Secrets are redacted by [DebugLog]. */
     fun shareText(): String = buildString {
         append(log.text())

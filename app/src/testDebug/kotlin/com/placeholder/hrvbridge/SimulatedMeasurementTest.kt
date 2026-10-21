@@ -124,6 +124,35 @@ class SimulatedMeasurementTest {
     }
 
     @Test
+    fun deleteAllMeasurementsRemovesSessionsAndLogButKeepsKey() {
+        val keys = InMemoryKeyProvider()
+        val store = testCredentialStore(context, keys)
+        // Nothing listens on port 1: the upload fails locally, never reaching Intervals.icu.
+        val c = testController(context, sessionsDir, store, baseUrl = "http://127.0.0.1:1")
+        assertEquals(SaveKeyResult.SAVED, c.saveApiKey("abc123"))
+        c.start(DebugStrap.create(context, "Vector: clean 70 beats", 60))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3))
+        idleUntil { c.upload is UploadStatus.Done }
+        assertEquals(1, com.placeholder.hrvbridge.core.SessionStore(sessionsDir).list().size)
+        assertTrue(c.shareText().contains("RX "))
+        assertEquals(1, c.deleteAllMeasurements())
+        assertEquals(emptyList<Any>(), com.placeholder.hrvbridge.core.SessionStore(sessionsDir).list())
+        assertFalse(c.shareText().contains("RX "))
+        assertEquals(null, c.session)
+        assertEquals(com.placeholder.hrvbridge.core.Credential.ApiKey("abc123"), testCredentialStore(context, keys).load())
+    }
+
+    @Test
+    fun deleteAllIsRefusedWhileMeasuring() {
+        val c = testController(context, sessionsDir)
+        c.start(DebugStrap.create(context, "Vector: clean 70 beats", 1))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2))
+        assertTrue(c.isActive)
+        assertEquals(0, c.deleteAllMeasurements())
+        assertTrue(c.isActive)
+    }
+
+    @Test
     fun everyScenarioLoads() {
         val names = DebugStrap.scenarios(context)
         assertTrue(names.toString(), names.size >= 8)
