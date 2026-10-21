@@ -60,7 +60,7 @@
     <string name="try_again">Try again</string>
     <string name="upload_anyway">Upload anyway</string>
     <string name="upload_to_intervals">Upload to Intervals.icu</string>
-    <string name="close_without_uploading">Close without uploading</string>
+    <string name="close_without_uploading">close without uploading</string>
     <string name="turn_on_bluetooth">Turn on Bluetooth</string>
     <string name="open_settings">Open Settings</string>
     <string name="stop_title">Stop the measurement?</string>

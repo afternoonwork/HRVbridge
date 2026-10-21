@@ -480,7 +480,7 @@ struct MainScreenView: View {
                 // Nothing uploads until the user has seen the result and taps Upload.
                 VStack(spacing: 4) {
                     Button("Upload to Intervals.icu", action: actions.upload).buttonStyle(KeyStyle())
-                    Button("Done", action: actions.done).buttonStyle(TextKeyStyle())
+                    Button("close without uploading", action: actions.done).buttonStyle(TextKeyStyle())
                 }
             } else {
                 Button("Done", action: actions.done).buttonStyle(KeyStyle())
