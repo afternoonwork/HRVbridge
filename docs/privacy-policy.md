@@ -1,8 +1,6 @@
-# SignON privacy policy (draft)
+# SignON privacy policy
 
-Draft, not yet published. Placeholders are in [square brackets].
-
-Effective date: [date]
+Effective date: 21 October 2026
 
 SignON ("the app") records a short morning heart measurement from your
 Bluetooth chest strap and writes the results to your own Intervals.icu
@@ -52,7 +50,9 @@ policy apply to them.
 
 The app can create a debug log (Bluetooth events, received data, results)
 to help find problems. It is only shared if you tap "Share debug log", and
-only with the recipient you choose. It never contains your API key.
+only with the recipient you choose. It never contains your API key. If you
+send a debug log to the developer by email (signon(at)paulmuller.fyi) to report a
+problem, it is used only to fix that problem and deleted afterwards.
 
 ## Permissions
 
@@ -86,9 +86,11 @@ The app is not directed at children.
 
 ## Changes to this policy
 
-If this policy changes, the new version will be published at [URL] with a
+If this policy changes, the new version will be published at
+https://github.com/mularmularmular/HRVbridge/blob/main/docs/privacy-policy.md
+with a
 new effective date.
 
 ## Contact
 
-[Name], [email address]
+Paul Müller, signon(at)paulmuller.fyi

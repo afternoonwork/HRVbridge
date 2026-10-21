@@ -37,14 +37,21 @@ Android 8.0 or newer, with Bluetooth.
 
 ## Beta
 
-The Android app is a beta: Bluetooth has not yet been tested on many
-phones and straps. If connecting or measuring fails, open Settings in the
-app, tap Debug log, then Share, and send it to the developer. The log contains
-your heart data for that session but never your API key.
+The Android app is a beta and has not yet run on any Android phone:
+Bluetooth and the secure storage of your API key have only been tested in
+simulation. So the first users are its testers. If connecting or measuring
+fails, open Settings in the app, tap Debug log, then Share, and send it by
+email to signon(at)paulmuller.fyi. The log contains your heart data for that session
+(but never your API key), so please do not post it in a public GitHub
+issue.
 
 ## iOS
 
 Coming later.
+
+## Contact
+
+signon(at)paulmuller.fyi
 
 ## Privacy
 
@@ -52,5 +59,5 @@ See the [privacy policy](docs/privacy-policy.md).
 
 ## Copyright
 
-Copyright Paul Muller. All rights reserved. The source code is public for
+Copyright Paul Müller. All rights reserved. The source code is public for
 transparency; no licence is granted.
