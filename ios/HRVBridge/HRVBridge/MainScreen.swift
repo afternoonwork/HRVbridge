@@ -219,9 +219,9 @@ struct MainScreenView: View {
     @State private var topHeight: CGFloat = 0
     @State private var belowHeight: CGFloat = 0
     @State private var keysHeight: CGFloat = 0
-    /// Heights of the step indicator, the taller of the settling and measuring readouts, and
-    /// the Start key, measured hidden, so the dial keeps one size from Connected through
-    /// measuring. Other states only shrink it if their content would not fit.
+    /// Heights of the step indicator, the tallest settling or measuring readout (also with poor
+    /// contact), and the Start key, measured hidden, so the dial keeps one size from Connected
+    /// through measuring. Terminal states only shrink it if they would not fit.
     @State private var stepHeight: CGFloat = 0
     @State private var belowProbe: CGFloat = 0
     @State private var keysProbe: CGFloat = 0
@@ -240,7 +240,12 @@ struct MainScreenView: View {
         GeometryReader { geo in
             let running = topHeight + Space.dialToReadout - 12 + belowProbe + keysProbe + 12 + Space.bottom
             let current = topHeight + belowSpacing + belowHeight + keysHeight
-            let spare = geo.size.height - 8 - Space.stepsToDial - max(running, current) - 8
+            // Active states (poor contact included) keep the reserved size; only terminal states may shrink it.
+            let active: Bool = {
+                if case .connected = state.phase { return true }
+                return state.isMeasuring
+            }()
+            let spare = geo.size.height - 8 - Space.stepsToDial - (active ? running : max(running, current)) - 8
             let dialSize = max(160, min(HeartDial.size(forWidth: geo.size.width), spare))
             ScrollView {
                 VStack(spacing: 0) {
@@ -285,6 +290,8 @@ struct MainScreenView: View {
             ZStack {
                 MainScreenView(state: MainScreenState(phase: .settling(secondsLeft: 60, poorContact: false))).below
                 MainScreenView(state: MainScreenState(phase: .measuring(secondsLeft: 60, beats: 60, poorContact: false))).below
+                MainScreenView(state: MainScreenState(phase: .settling(secondsLeft: 60, poorContact: true))).below
+                MainScreenView(state: MainScreenState(phase: .measuring(secondsLeft: 60, beats: 60, poorContact: true))).below
             }
             .padding(.horizontal, Space.margin)
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { belowProbe = $0 }

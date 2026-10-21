@@ -30,7 +30,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** On a small screen (720 x 1280 at 320 dpi) the dial keeps one size from Connected through measuring; the result never grows it. */
+/** On a small screen (720 x 1280 at 320 dpi) the dial keeps one size from Connected through measuring, also with poor contact; the result never grows it. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "w360dp-h640dp-xhdpi")
 class DialSizeTest {
@@ -60,6 +60,8 @@ class DialSizeTest {
             MainScreenState(MainPhase.Connected(strap), heartRate = 53, strapConnected = true),
             MainScreenState(MainPhase.Settling(38, false), heartRate = 53, handAngle = 132.0),
             MainScreenState(MainPhase.Measuring(36, 22, false), heartRate = 52, handAngle = 504.0),
+            MainScreenState(MainPhase.Settling(41, true), heartRate = 55, handAngle = 115.0),
+            MainScreenState(MainPhase.Measuring(30, 25, true), heartRate = 55, handAngle = 540.0),
         ).map(::dialSize)
         running.forEach { assertEquals(running[0], it) }
         val dp = running[0].width / activity.resources.displayMetrics.density

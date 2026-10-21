@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +44,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
@@ -211,9 +214,13 @@ fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: 
             contentAlignment = Alignment.Center,
         ) {
             if (model.label != null && filled) {
-                // White on #C84A16 is 4.7:1, so the bold label (14 sp at 264, at least 12) meets WCAG AA.
-                Text(model.label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = maxOf(12f, 14f * k).sp), fontWeight = FontWeight.Bold,
-                     color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // White on #C84A16 is 4.7:1 (WCAG AA). Bold, 14 sp at 264, shrinks to fit, never ellipsised.
+                BasicText(
+                    model.label, Modifier.padding(horizontal = 6.dp * k),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = Color.White),
+                    maxLines = 1, softWrap = false,
+                    autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = (14f * k).sp, stepSize = 0.25.sp),
+                )
             } else if (model.label != null) {
                 Text(model.label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold,
                      color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)

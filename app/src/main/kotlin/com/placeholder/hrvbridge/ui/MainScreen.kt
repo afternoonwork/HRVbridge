@@ -272,9 +272,9 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
     var topHeight by remember { mutableIntStateOf(0) }
     var belowHeight by remember { mutableIntStateOf(0) }
     var keysHeight by remember { mutableIntStateOf(0) }
-    // Heights of the step indicator, the taller of the settling and measuring readouts, and
-    // the Start key, measured without placing them, so the dial keeps one size from Connected
-    // through measuring. Other states only shrink it if their content would not fit.
+    // Heights of the step indicator, the tallest settling or measuring readout (also with poor
+    // contact), and the Start key, measured without placing them, so the dial keeps one size
+    // from Connected through measuring. Terminal states only shrink it if they would not fit.
     var stepHeight by remember { mutableIntStateOf(0) }
     var belowProbe by remember { mutableIntStateOf(0) }
     var keysProbe by remember { mutableIntStateOf(0) }
@@ -302,7 +302,9 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
             (topHeight + belowProbe + 16.dp.roundToPx() + keysProbe + (12.dp + Space.bottom).roundToPx()).toDp()
         } + fixed + Space.dialToReadout - 12.dp
         val current = with(density) { (topHeight + belowHeight + keysHeight).toDp() } + fixed + gap
-        val target = maxOf(160.dp, minOf(dialSize(maxWidth), maxHeight - maxOf(running, current)))
+        // Active states (poor contact included) keep the reserved size; only terminal states may shrink it.
+        val active = state.phase is MainPhase.Connected || state.isMeasuring
+        val target = maxOf(160.dp, minOf(dialSize(maxWidth), maxHeight - if (active) running else maxOf(running, current)))
         // Snap until the first measured layout, so opening the screen does not animate.
         val size by animateDpAsState(target, if (measured[0]) tween(250) else snap(), label = "dialSize")
         val ready = topHeight > 0 && belowProbe > 0 && keysProbe > 0
@@ -326,6 +328,8 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
                     Probe({ belowProbe = it }) {
                         Below(state.copy(phase = MainPhase.Settling(60, false)), actions)
                         Below(state.copy(phase = MainPhase.Measuring(60, 60, false)), actions)
+                        Below(state.copy(phase = MainPhase.Settling(60, true)), actions)
+                        Below(state.copy(phase = MainPhase.Measuring(60, 60, true)), actions)
                     }
                     Below(state, actions)
                 }

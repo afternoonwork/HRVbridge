@@ -116,7 +116,7 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = "w360dp-h640dp-xhdpi")
     fun smallScreen() {
-        for (name in listOf("connected", "settling")) render("$name-360x640-light", false) { MainScreen(states.getValue(name)) }
+        for (name in listOf("connected", "settling", "poor-contact")) render("$name-360x640-light", false) { MainScreen(states.getValue(name)) }
     }
 
     @Composable
