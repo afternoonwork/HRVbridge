@@ -319,7 +319,6 @@ private fun mainState(c: MeasurementController): MainScreenState {
     }
     val phase = when (val s = c.session) {
         null -> strapPhase
-        is SessionState.Checking -> MainPhase.Checking(seconds(c.checkMs - s.elapsedMs), s.poorContact)
         is SessionState.Stabilising -> MainPhase.Settling(seconds(s.remainingMs), s.poorContact)
         is SessionState.Measuring -> MainPhase.Measuring(seconds(s.remainingMs), s.beats, s.poorContact)
         is SessionState.Failed -> MainPhase.Failed(s.reason)

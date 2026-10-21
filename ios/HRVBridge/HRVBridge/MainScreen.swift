@@ -20,7 +20,6 @@ enum MainPhase: Equatable {
     case connected(String)
     case couldNotConnect(String)
     case bluetooth(HeartRateCentral.BluetoothProblem)
-    case checking(secondsLeft: Int, poorContact: Bool)
     case settling(secondsLeft: Int, poorContact: Bool)
     case measuring(secondsLeft: Int, beats: Int, poorContact: Bool)
     case failed(FailReason)
@@ -43,14 +42,14 @@ struct MainScreenState: Equatable {
 
     var isMeasuring: Bool {
         switch phase {
-        case .checking, .settling, .measuring: return true
+        case .settling, .measuring: return true
         default: return false
         }
     }
 
     var poorContact: Bool {
         switch phase {
-        case let .checking(_, poor), let .settling(_, poor), let .measuring(_, _, poor): return poor
+        case let .settling(_, poor), let .measuring(_, _, poor): return poor
         default: return false
         }
     }
@@ -90,8 +89,6 @@ struct MainScreenState: Equatable {
             }
         case .connected:
             return DialModel(window: .heartRate(heartRate), hand: .ink)
-        case let .checking(_, poor):
-            return DialModel(window: poor ? .label("poor contact") : .heartRate(heartRate), hand: .ink)
         case let .settling(_, poor), let .measuring(_, _, poor):
             return .running(hr: heartRate, handAngle: handAngle, poorContact: poor)
         case let .failed(reason):
@@ -115,7 +112,6 @@ struct MainScreenState: Equatable {
         case let .connecting(name): return "Connecting to \(name)"
         case let .connected(name): return "\(name) connected"
         case .couldNotConnect, .bluetooth, .failed: return "Problem"
-        case .checking: return "Checking signal"
         case .settling: return "Settling"
         case .measuring: return "Recording"
         case let .result(r): return r.reliable ? "Finished" : "Finished, unreliable"
@@ -138,7 +134,6 @@ struct MainScreenState: Equatable {
             }
         }
         switch phase {
-        case let .checking(s, _): parts.append("Checking signal, \(s) seconds left.")
         case let .settling(s, _): parts.append("Settling, \(s) seconds left.")
         case let .measuring(s, _, _): parts.append("Recording, \(s) seconds left.")
         default: break
@@ -276,14 +271,12 @@ struct MainScreenView: View {
                 if state.cancelled, let w = state.warning { Notice(text: w, warning: true) }
                 strapRow(StatusLine(mark: .ink, bold: name, text: "connected"))
             }
-        case let .checking(_, poor):
-            StepIndicator(current: .check, mark: poor ? .hollow : .ink)
         case let .settling(_, poor):
             StepIndicator(current: .settle, mark: poor ? .hollow : .ink)
         case let .measuring(_, _, poor):
             StepIndicator(current: .measure, mark: poor ? .hollow : .accent)
         case .failed:
-            StepIndicator(current: .check, mark: .hollow)
+            StepIndicator(current: .settle, mark: .hollow)
         case let .result(r):
             StepIndicator(current: .upload, mark: r.upload == .uploaded ? .accent : .hollow)
         case .questions:
@@ -322,9 +315,6 @@ struct MainScreenView: View {
             .multilineTextAlignment(.center)
         case .couldNotConnect, .bluetooth, .failed, .notEnoughBeats:
             if let w = state.warning { Notice(text: w, warning: true) }
-        case let .checking(s, poor):
-            readout(mark: nil, label: "Checking signal", seconds: s,
-                    detail: "Making sure the strap sends beat-to-beat data.", poor: poor)
         case let .settling(s, poor):
             readout(mark: nil, label: "Settling", seconds: s, detail: "Sit still and breathe normally.", poor: poor)
         case let .measuring(s, beats, poor):
@@ -446,7 +436,7 @@ struct MainScreenView: View {
             Button("Try again", action: actions.findStrap).buttonStyle(KeyStyle())
         case .bluetooth(.notAllowed):
             Button("Open Settings", action: actions.openSettings).buttonStyle(KeyStyle())
-        case .checking, .settling, .measuring:
+        case .settling, .measuring:
             Button("Stop", action: actions.stop).buttonStyle(KeyStyle(kind: .secondary))
         case let .failed(reason):
             if reason == .noRR {

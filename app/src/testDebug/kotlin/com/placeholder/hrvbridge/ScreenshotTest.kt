@@ -69,7 +69,6 @@ class ScreenshotTest {
         "could-not-connect" to MainScreenState(MainPhase.CouldNotConnect(strap)),
         "bluetooth-off" to MainScreenState(MainPhase.BluetoothOff),
         "not-allowed" to MainScreenState(MainPhase.NotAllowed),
-        "checking" to MainScreenState(MainPhase.Checking(7, false), heartRate = 54),
         "poor-contact" to MainScreenState(MainPhase.Settling(41, true), heartRate = 55, handAngle = 115.0),
         "settling" to MainScreenState(MainPhase.Settling(38, false), heartRate = 53, handAngle = 132.0),
         "measuring" to MainScreenState(MainPhase.Measuring(36, 22, false), heartRate = 52, handAngle = 504.0),

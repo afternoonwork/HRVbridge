@@ -49,7 +49,8 @@ class ConnectFlowTest {
         src.now = 8_000 // scanning and connecting took 8 s
         src.listener!!.onConnected()
         assertFalse(c.connecting)
-        assertEquals(SessionState.Checking(0, false), c.session)
+        // No separate check phase: settling starts at once (its first 10 s hold the check).
+        assertEquals(SessionState.Stabilising(60_000, false), c.session)
     }
 
     @Test

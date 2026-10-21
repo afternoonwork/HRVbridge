@@ -33,8 +33,6 @@ enum Snapshots {
         "could-not-connect": MainScreenState(phase: .couldNotConnect(strap)),
         "bluetooth-off": MainScreenState(phase: .bluetooth(.off)),
         "not-allowed": MainScreenState(phase: .bluetooth(.notAllowed)),
-        "checking": MainScreenState(phase: .checking(secondsLeft: 7, poorContact: false), heartRate: 54,
-                                    strapConnected: true),
         "poor-contact": MainScreenState(phase: .settling(secondsLeft: 41, poorContact: true), heartRate: 55,
                                         handAngle: 115, strapConnected: true),
         "settling": MainScreenState(phase: .settling(secondsLeft: 38, poorContact: false), heartRate: 53,

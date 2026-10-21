@@ -66,7 +66,6 @@ sealed interface MainPhase {
     data class CouldNotConnect(val name: String) : MainPhase
     data object BluetoothOff : MainPhase
     data object NotAllowed : MainPhase
-    data class Checking(val secondsLeft: Int, val poorContact: Boolean) : MainPhase
     data class Settling(val secondsLeft: Int, val poorContact: Boolean) : MainPhase
     data class Measuring(val secondsLeft: Int, val beats: Int, val poorContact: Boolean) : MainPhase
     data class Failed(val reason: FailReason) : MainPhase
@@ -95,10 +94,9 @@ data class MainScreenState(
     val retryUploaded: Int? = null,
     val retryLine: Txt? = null,
 ) {
-    val isMeasuring get() = phase is MainPhase.Checking || phase is MainPhase.Settling || phase is MainPhase.Measuring
+    val isMeasuring get() = phase is MainPhase.Settling || phase is MainPhase.Measuring
 
     val poorContact get() = when (phase) {
-        is MainPhase.Checking -> phase.poorContact
         is MainPhase.Settling -> phase.poorContact
         is MainPhase.Measuring -> phase.poorContact
         else -> false
@@ -127,9 +125,6 @@ data class MainScreenState(
         MainPhase.BluetoothOff -> DialModel(label = "Bluetooth off", faint = true)
         MainPhase.NotAllowed -> DialModel(label = "no access", faint = true)
         is MainPhase.Connected -> DialModel(heartRate = heartRate, hand = DialModel.Hand.INK)
-        is MainPhase.Checking -> DialModel(
-            heartRate = heartRate, label = if (phase.poorContact) "poor contact" else null, hand = DialModel.Hand.INK,
-        )
         is MainPhase.Settling -> DialModel.running(heartRate, handAngle, phase.poorContact)
         is MainPhase.Measuring -> DialModel.running(heartRate, handAngle, phase.poorContact)
         is MainPhase.Failed ->
@@ -155,7 +150,6 @@ data class MainScreenState(
         is MainPhase.Connecting -> "Connecting to ${phase.name}"
         is MainPhase.Connected -> "${phase.name} connected"
         is MainPhase.CouldNotConnect, MainPhase.BluetoothOff, MainPhase.NotAllowed, is MainPhase.Failed -> "Problem"
-        is MainPhase.Checking -> "Checking signal"
         is MainPhase.Settling -> "Settling"
         is MainPhase.Measuring -> "Recording"
         is MainPhase.Result -> if (phase.summary.reliable) "Finished" else "Finished, unreliable"
@@ -174,7 +168,6 @@ data class MainScreenState(
             }
         }
         when (phase) {
-            is MainPhase.Checking -> add("Checking signal, ${phase.secondsLeft} seconds left.")
             is MainPhase.Settling -> add("Settling, ${phase.secondsLeft} seconds left.")
             is MainPhase.Measuring -> add("Recording, ${phase.secondsLeft} seconds left.")
             else -> Unit
@@ -307,10 +300,9 @@ private fun Top(state: MainScreenState) {
             if (state.cancelled) state.warning?.let { Notice(it.resolve(), warning = true) }
             StrapRow(state) { StatusLine(StatusMark.INK, stringResource(R.string.connected), bold = p.name) }
         }
-        is MainPhase.Checking -> StepIndicator(Step.CHECK, if (p.poorContact) StepMark.HOLLOW else StepMark.INK)
         is MainPhase.Settling -> StepIndicator(Step.SETTLE, if (p.poorContact) StepMark.HOLLOW else StepMark.INK)
         is MainPhase.Measuring -> StepIndicator(Step.MEASURE, if (p.poorContact) StepMark.HOLLOW else StepMark.ACCENT)
-        is MainPhase.Failed -> StepIndicator(Step.CHECK, StepMark.HOLLOW)
+        is MainPhase.Failed -> StepIndicator(Step.SETTLE, StepMark.HOLLOW)
         is MainPhase.Result -> StepIndicator(
             Step.UPLOAD, if (p.summary.upload == ResultSummary.Upload.UPLOADED) StepMark.ACCENT else StepMark.HOLLOW,
         )
@@ -345,8 +337,6 @@ private fun Below(state: MainScreenState, actions: MainActions) {
         }
         is MainPhase.CouldNotConnect, MainPhase.BluetoothOff, MainPhase.NotAllowed, is MainPhase.Failed, MainPhase.NotEnoughBeats ->
             state.warning?.let { Notice(it.resolve(), warning = true) }
-        is MainPhase.Checking -> Readout(state, null, stringResource(R.string.phase_checking), p.secondsLeft,
-            stringResource(R.string.phase_checking_detail), p.poorContact)
         is MainPhase.Settling -> Readout(state, null, stringResource(R.string.phase_settling), p.secondsLeft,
             stringResource(R.string.phase_settling_detail), p.poorContact)
         is MainPhase.Measuring -> Readout(state, StatusMark.ACCENT, stringResource(R.string.phase_recording), p.secondsLeft,
@@ -454,7 +444,7 @@ private fun Keys(state: MainScreenState, actions: MainActions) {
         is MainPhase.CouldNotConnect -> PrimaryKey(stringResource(R.string.try_again), actions.findStrap)
         MainPhase.BluetoothOff -> PrimaryKey(stringResource(R.string.turn_on_bluetooth), actions.turnOnBluetooth)
         MainPhase.NotAllowed -> PrimaryKey(stringResource(R.string.open_settings), actions.openSettings)
-        is MainPhase.Checking, is MainPhase.Settling, is MainPhase.Measuring -> SecondaryKey(stringResource(R.string.stop), actions.stop)
+        is MainPhase.Settling, is MainPhase.Measuring -> SecondaryKey(stringResource(R.string.stop), actions.stop)
         is MainPhase.Failed -> if (p.reason == FailReason.NO_RR) {
             PrimaryKey(stringResource(R.string.done), actions.done)
         } else {

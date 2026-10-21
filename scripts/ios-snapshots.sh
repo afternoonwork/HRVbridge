@@ -10,7 +10,7 @@ mkdir -p "$OUT"
 
 STATES="dial connect connect-rejected connect-connected settings
 no-strap searching connecting connected retry cancelled could-not-connect bluetooth-off not-allowed
-checking poor-contact settling measuring failed-no-rr failed-disconnected
+poor-contact settling measuring failed-no-rr failed-disconnected
 uploading uploaded unreliable not-enough-beats upload-failed not-connected questions questions-answered"
 
 BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")

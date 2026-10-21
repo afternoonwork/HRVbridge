@@ -45,7 +45,7 @@ class MainFlowTest {
         val c = connected()
         c.setSettling(30)
         c.startMeasurement()
-        assertTrue(c.session is SessionState.Checking)
+        assertTrue(c.session is SessionState.Stabilising)
         var last = c.handAngle
         var sawSettling = false
         var sawMeasuring = false
@@ -75,7 +75,8 @@ class MainFlowTest {
         assertEquals(0.0, c.handAngle, 0.0)
         assertEquals(StrapState.Connected("Simulated strap"), c.strap)
         c.measureAgain { error("strap is still connected") }
-        assertTrue(c.session is SessionState.Checking)
+        // Settling 0 s: straight into the measurement (its first 10 s hold the check).
+        assertTrue(c.session is SessionState.Measuring)
     }
 
     @Test

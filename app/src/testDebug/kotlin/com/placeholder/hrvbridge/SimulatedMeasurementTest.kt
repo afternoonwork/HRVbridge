@@ -32,7 +32,7 @@ class SimulatedMeasurementTest {
 
     @Test
     fun cleanVectorAtSixtyTimesSpeedUploadsAutomatically() {
-        // 10 s check + 60 s stabilisation + 60 s measurement = 130 s virtual, about 2.2 s real.
+        // 60 s settling (the first 10 s are the signal check) + 60 s measurement = 120 s virtual, 2 s real.
         val c = run("Vector: clean 70 beats", speed = 60, realSeconds = 3)
         val done = c.session as SessionState.Finished
         assertTrue(done.result!!.reliable)
@@ -48,7 +48,7 @@ class SimulatedMeasurementTest {
     fun realTimeSpeedIsStillMeasuringAfterOneMinute() {
         val c = run("Vector: clean 70 beats", speed = 1, realSeconds = 75)
         val m = c.session as SessionState.Measuring
-        assertEquals(55_000.0, m.remainingMs.toDouble(), 1_000.0)
+        assertEquals(45_000.0, m.remainingMs.toDouble(), 1_000.0)
         assertTrue(c.isActive)
     }
 
@@ -80,9 +80,12 @@ class SimulatedMeasurementTest {
         c.start(DebugStrap.create(context, "Poor contact for the first 15 s", 10))
         val looper = shadowOf(Looper.getMainLooper())
         looper.idleFor(Duration.ofMillis(1_200)) // 12 s virtual
-        assertEquals(true, (c.session as SessionState.Checking).poorContact)
-        looper.idleFor(Duration.ofMillis(2_000)) // 32 s virtual: check ran 16..26 s, now settling
-        assertTrue(c.session.toString(), c.session is SessionState.Stabilising)
+        val held = c.session as SessionState.Stabilising
+        assertEquals(true, held.poorContact)
+        assertEquals(60_000.0, held.remainingMs.toDouble(), 1_000.0) // the clock waits for good contact
+        looper.idleFor(Duration.ofMillis(2_000)) // 32 s virtual: settling restarted at about 16 s, check passed
+        val settling = c.session as SessionState.Stabilising
+        assertEquals(44_000.0, settling.remainingMs.toDouble(), 2_000.0)
     }
 
     @Test

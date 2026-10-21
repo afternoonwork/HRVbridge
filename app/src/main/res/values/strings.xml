@@ -19,8 +19,6 @@
     <string name="cancelled_in_background">The measurement was cancelled because the app left the screen. Keep it open while measuring.</string>
 
     <!-- Main screen: measuring -->
-    <string name="phase_checking">Checking signal</string>
-    <string name="phase_checking_detail">Making sure the strap sends beat-to-beat data.</string>
     <string name="phase_settling">Settling</string>
     <string name="phase_settling_detail">Sit still and breathe normally.</string>
     <string name="phase_recording">Recording</string>

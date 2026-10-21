@@ -164,12 +164,13 @@ fun StatusLine(mark: StatusMark, text: String, bold: String? = null) {
     }
 }
 
-enum class Step(val title: String) { CHECK("check"), SETTLE("settle"), MEASURE("measure"), UPLOAD("upload") }
+/** Three steps; the strap row shows the connection (no separate check step). */
+enum class Step(val title: String) { SETTLE("settle"), MEASURE("measure"), UPLOAD("upload") }
 
 enum class StepMark { INK, ACCENT, HOLLOW }
 
 /**
- * Four steps. Done: filled ink-2; current: filled ink, accent or hollow; later: hollow.
+ * Three steps. Done: filled ink-2; current: filled ink, accent or hollow; later: hollow.
  * The current label is bold, so steps never differ by colour alone.
  */
 @Composable
@@ -177,7 +178,7 @@ fun StepIndicator(current: Step, mark: StepMark = StepMark.INK) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(20.dp),
         modifier = Modifier.semantics(mergeDescendants = true) {
-            contentDescription = "Step ${current.ordinal + 1} of 4: ${current.title}"
+            contentDescription = "Step ${current.ordinal + 1} of 3: ${current.title}"
             // Phase changes are announced.
             liveRegion = LiveRegionMode.Polite
         },
