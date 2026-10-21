@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    // Placeholder: the package ID is permanent on Google Play, replace before the first upload.
+    // Internal code namespace; the Play package ID is applicationId (permanent on Google Play).
     namespace = "com.placeholder.hrvbridge"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.placeholder.hrvbridge"
+        applicationId = "fyi.paulmuller.signon"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

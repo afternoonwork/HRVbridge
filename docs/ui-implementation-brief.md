@@ -177,7 +177,7 @@ The measurement controller exposes the running phase's start and length on its c
 **Open points**
 
 - The Polar H9 does not report the contact bit, so "poor contact" will rarely show on Paul's strap: test it with the simulated strap.
-- The app name is still a placeholder; keep the title string in one place.
+- Keep the app name (SignON) in one place.
 - The canvas still draws the API key field with a hairline border; the design system's line-strong border is correct.
 
 **Done when**
