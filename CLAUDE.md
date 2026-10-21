@@ -259,6 +259,17 @@ Draft connect-screen copy:
 - OAuth: `ASWebAuthenticationSession`, PKCE, token in Keychain
   (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`).
 - Same spec as Android for parsing, filtering, maths and Intervals.icu calls.
+- `ios/HRVCore`: Swift package, pure Swift + Foundation (no CryptoKit,
+  CoreBluetooth or UIKit), tools version 5.9, XCTest. Port of `:core`
+  (parser, filter, metrics, rounding, signal check, session state machine,
+  Intervals request building, session records and store, raw recordings,
+  debug log). Tests read `core/src/test/resources/test-vectors.json`
+  directly. Session JSON uses the same keys as Android's `SessionRecord`.
+  Run on Linux with `scripts/swift-test.sh` (native toolchain from
+  `cloud-setup.sh`, else the `swift:6.2-noble` Docker image).
+- Rounding in Swift uses exact integer arithmetic for the second step
+  (n = floor(x*1e9+0.5), then integer half up), which gives bit-identical
+  results to Android's BigDecimal.
 
 ## Build and CI
 
