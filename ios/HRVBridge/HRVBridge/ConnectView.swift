@@ -18,7 +18,7 @@ struct ConnectView: View {
                       proceed: { model.showConnect = false })
             .sensoryFeedback(trigger: measurement.keyCheck) { _, new in
                 switch new {
-                case .valid?: return .success
+                // Only the brief's moments: a rejected key, not an accepted one.
                 case .rejected?: return .error
                 default: return nil
                 }

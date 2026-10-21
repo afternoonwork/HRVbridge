@@ -81,7 +81,7 @@ struct HeartDial: View {
                         style: StrokeStyle(lineWidth: outer - inner, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
                 .frame(width: mid * 2, height: mid * 2)
-                .animation(handAnimation, value: model.bandAngle)
+                .animation(model.bandAngle == 0 ? nil : handAnimation, value: model.bandAngle)
         }
     }
 
@@ -139,7 +139,7 @@ struct HeartDial: View {
                     .frame(width: 2, height: length + tail)
                     .offset(y: -(length - tail) / 2)
                     .rotationEffect(.degrees(model.handAngle))
-                    .animation(handAnimation, value: model.handAngle)
+                    .animation(model.handAngle == 0 ? nil : handAnimation, value: model.handAngle)
                 Circle().fill(colour).frame(width: 14, height: 14)
                 Circle().fill(Theme.surface).frame(width: 4, height: 4)
             }
@@ -147,7 +147,8 @@ struct HeartDial: View {
         }
     }
 
-    /// 120 ms with a little overshoot; none with Reduce Motion.
+    /// 120 ms with a little overshoot; none with Reduce Motion. A reset to 12 (0 degrees,
+    /// e.g. after Done) jumps instead of sweeping back.
     private var handAnimation: Animation? {
         reduceMotion ? nil : .spring(response: 0.12, dampingFraction: 0.7)
     }
