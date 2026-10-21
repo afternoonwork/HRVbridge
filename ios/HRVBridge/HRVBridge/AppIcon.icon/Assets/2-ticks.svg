@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 100 100">
+<g stroke="#1A1A1A" stroke-width="2.6" fill="none">
+<line x1="50" y1="17" x2="50" y2="25"/>
+<line x1="50" y1="17" x2="50" y2="25" transform="rotate(90 50 50)"/>
+<line x1="50" y1="17" x2="50" y2="25" transform="rotate(180 50 50)"/>
+<line x1="50" y1="17" x2="50" y2="25" transform="rotate(270 50 50)"/>
+</g>
+<g stroke="#1A1A1A" stroke-width="1.8" fill="none">
+<line x1="50" y1="17" x2="50" y2="22" transform="rotate(30 50 50)"/>
+<line x1="50" y1="17" x2="50" y2="22" transform="rotate(60 50 50)"/>
+<line x1="50" y1="17" x2="50" y2="22" transform="rotate(120 50 50)"/>
+<line x1="50" y1="17" x2="50" y2="22" transform="rotate(150 50 50)"/>
+<line x1="50" y1="17" x2="50" y2="22" transform="rotate(210 50 50)"/>
+<line x1="50" y1="17" x2="50" y2="22" transform="rotate(240 50 50)"/>
+<line x1="50" y1="17" x2="50" y2="22" transform="rotate(300 50 50)"/>
+<line x1="50" y1="17" x2="50" y2="22" transform="rotate(330 50 50)"/>
+</g>
+</svg>

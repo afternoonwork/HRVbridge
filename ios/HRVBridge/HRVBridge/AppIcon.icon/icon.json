@@ -1,0 +1,89 @@
+{
+  "fill" : "system-light",
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "5-heart.svg",
+          "name" : "5-heart"
+        },
+        {
+          "glass" : false,
+          "image-name" : "4-hand.svg",
+          "name" : "4-hand"
+        },
+        {
+          "glass" : false,
+          "image-name" : "3-band.svg",
+          "name" : "3-band"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "srgb:0.92549,0.91765,0.89412,1.00000"
+              }
+            }
+          ],
+          "glass" : false,
+          "image-name" : "2-ticks.svg",
+          "name" : "2-ticks"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "srgb:0.10980,0.10980,0.10196,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "1-face.svg",
+          "name" : "1-face"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "extended-gray:0.75000,1.00000"
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "srgb:0.10980,0.10980,0.10196,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "1-face.svg",
+          "name" : "1-face",
+          "position" : {
+            "scale" : 1.03,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 1
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
