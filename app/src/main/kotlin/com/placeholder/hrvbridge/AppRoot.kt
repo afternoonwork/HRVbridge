@@ -203,6 +203,7 @@ private fun MainRoute(controller: MeasurementController, openSettings: () -> Uni
                     done = controller::finishMeasurement,
                     again = { controller.measureAgain { BleHeartRateSource(context) } },
                     uploadAnyway = controller::uploadAnyway,
+                    submitAnswers = controller::submitAnswers,
                     turnOnBluetooth = {
                         runCatching { enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) }
                     },
@@ -252,6 +253,8 @@ private fun SettingsRoute(controller: MeasurementController, back: () -> Unit, d
             controller.settlingSeconds,
             SettingsActions(
                 setSettling = controller::setSettling,
+                questionsEnabled = controller.questionsEnabled,
+                enableQuestions = controller::enableQuestions,
                 disconnect = {
                     controller.disconnect()
                     disconnected()
@@ -343,7 +346,7 @@ private fun mainState(c: MeasurementController): MainScreenState {
                     restingHr = r.restingHr, rmssd = r.rmssdRounded, sdnn = r.sdnnRounded,
                     accepted = r.acceptedBeats, total = s.rrMs.size, reliable = r.reliable,
                     upload = when (val u = c.upload) {
-                        UploadStatus.None -> ResultSummary.Upload.NONE
+                        UploadStatus.None, UploadStatus.AwaitingAnswers -> ResultSummary.Upload.NONE
                         UploadStatus.InProgress -> ResultSummary.Upload.IN_PROGRESS
                         is UploadStatus.Done -> when (val res = u.result) {
                             is UploadResult.Success -> if (res.dryRun) ResultSummary.Upload.DRY_RUN else ResultSummary.Upload.UPLOADED
@@ -355,7 +358,7 @@ private fun mainState(c: MeasurementController): MainScreenState {
                         }
                     },
                 ),
-            )
+            ).let { if (c.upload == UploadStatus.AwaitingAnswers) MainPhase.Questions(it.summary) else it }
         } ?: MainPhase.NotEnoughBeats
     }
     val retry = c.retry

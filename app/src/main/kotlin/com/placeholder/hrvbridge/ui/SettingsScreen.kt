@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -21,6 +22,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,6 +43,8 @@ import com.placeholder.hrvbridge.R
 /** What Settings needs from the app; plain callbacks so the screenshot test can show it. */
 class SettingsActions(
     val setSettling: (Int) -> Unit = {},
+    val questionsEnabled: Boolean = false,
+    val enableQuestions: (Boolean) -> Unit = {},
     val disconnect: () -> Unit = {},
     val deleteAll: () -> Unit = {},
     val openDebugLog: () -> Unit = {},
@@ -64,6 +68,19 @@ fun SettingsContent(settlingSeconds: Int, actions: SettingsActions, modifier: Mo
             Row1(stringResource(R.string.settling_time), stringResource(R.string.seconds, settlingSeconds)) { pickSettling = true }
         }
         Footer(stringResource(R.string.settling_footer))
+        Group {
+            Row(
+                Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp)
+                    .toggleable(value = actions.questionsEnabled, role = Role.Switch, onValueChange = actions.enableQuestions)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.questions_switch), style = MaterialTheme.typography.bodyLarge, color = hrv.ink,
+                     modifier = Modifier.weight(1f))
+                Switch(checked = actions.questionsEnabled, onCheckedChange = null)
+            }
+        }
+        Footer(stringResource(R.string.questions_footer))
 
         Header(stringResource(R.string.settings_intervals))
         Group {

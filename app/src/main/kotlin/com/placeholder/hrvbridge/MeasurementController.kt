@@ -18,6 +18,7 @@ import com.placeholder.hrvbridge.core.Intervals
 import com.placeholder.hrvbridge.core.IntervalsClient
 import com.placeholder.hrvbridge.core.KeyCheck
 import com.placeholder.hrvbridge.core.MeasurementSession
+import com.placeholder.hrvbridge.core.ReadinessAnswers
 import com.placeholder.hrvbridge.core.SessionConfig
 import com.placeholder.hrvbridge.core.SessionRecord
 import com.placeholder.hrvbridge.core.SessionState
@@ -60,6 +61,9 @@ sealed interface StrapState {
 
 sealed interface UploadStatus {
     data object None : UploadStatus
+
+    /** Morning questions are on: the result waits for answers (or Skip) before uploading. */
+    data object AwaitingAnswers : UploadStatus
 
     data object InProgress : UploadStatus
 
@@ -120,6 +124,10 @@ class MeasurementController @JvmOverloads constructor(
         private set
     var checkingKey by mutableStateOf(false)
         private set
+    /** Optional morning questions after a result; off by default. */
+    var questionsEnabled by mutableStateOf(false)
+        private set
+
     /** 0, 30, 60 or 90 s; used by [startMeasurement]. */
     var settlingSeconds by mutableStateOf(60)
         private set
@@ -148,6 +156,7 @@ class MeasurementController @JvmOverloads constructor(
     init {
         credential = credentials.load()?.also(log::addSecrets)
         settlingSeconds = settings.getInt(KEY_SETTLING, 60).takeIf { it in SETTLING_CHOICES } ?: 60
+        questionsEnabled = settings.getBoolean(KEY_QUESTIONS, false)
         retryPending()
     }
 
@@ -159,6 +168,27 @@ class MeasurementController @JvmOverloads constructor(
             publish()
             if (isActive) handler.postDelayed(this, TICK_MS)
         }
+    }
+
+    fun enableQuestions(on: Boolean) {
+        questionsEnabled = on
+        settings.edit().putBoolean(KEY_QUESTIONS, on).apply()
+    }
+
+    /** The morning questions page: answers (or null for Skip), then everything uploads together. */
+    fun submitAnswers(answers: ReadinessAnswers?) {
+        val done = session as? SessionState.Finished ?: return
+        val r = record ?: return
+        if (upload != UploadStatus.AwaitingAnswers) return
+        if (answers != null && !answers.isEmpty) {
+            record = r.copy(answers = answers).also(::save)
+            log.add("UPLOAD", "with answers: $answers")
+        }
+        startUpload(done)
+    }
+
+    private fun uploadOrAsk(done: SessionState.Finished) {
+        if (questionsEnabled) upload = UploadStatus.AwaitingAnswers else startUpload(done)
     }
 
     /** The Bluetooth source while scanning, for picking a strap from the list. */
@@ -362,7 +392,7 @@ class MeasurementController @JvmOverloads constructor(
             log.add("UPLOAD", "user override for unreliable measurement")
             // Persist the override first, so a failed upload is retried later.
             record = r.copy(uploadOverride = true).also(::save)
-            startUpload(done)
+            uploadOrAsk(done)
         }
     }
 
@@ -380,16 +410,24 @@ class MeasurementController @JvmOverloads constructor(
         if (batch.isEmpty()) return
         retry = RetryStatus.InProgress
         log.add("RETRY", "${batch.size} pending: ${batch.joinToString { it.date.toString() }}")
-        val values = batch.map { WellnessValues.from(it.date, it.result!!) }
+        val values = batch.map { it.wellnessValues()!! }
         io.execute {
             val res = client.putWellnessBulk(c, values)
+            // A sick day also needs its calendar event; until that is sent, the session stays pending.
+            val sickResults = if (res is ApiResult.Success) {
+                batch.filter { it.answers?.sick == true }.associate { it.date to client.postSickEvent(c, it.date) }
+            } else {
+                emptyMap()
+            }
             handler.post {
                 log.add("RETRY", res.toString())
+                sickResults.forEach { (date, r) -> log.add("RETRY", "sick event $date: $r") }
                 retry = when (res) {
                     is ApiResult.Success -> {
                         val now = Instant.now()
-                        batch.forEach { save(it.copy(uploadedAt = now)) }
-                        RetryStatus.Uploaded(batch.size)
+                        val sent = batch.filter { sickResults[it.date] == null || sickResults[it.date] is ApiResult.Success }
+                        sent.forEach { save(it.copy(uploadedAt = now)) }
+                        if (sent.size == batch.size) RetryStatus.Uploaded(batch.size) else RetryStatus.Failed(reconnect = false)
                     }
                     is ApiResult.Unauthorised -> RetryStatus.Failed(reconnect = true)
                     else -> RetryStatus.Failed(reconnect = false)
@@ -462,7 +500,7 @@ class MeasurementController @JvmOverloads constructor(
                 record = r
                 save(r)
                 log.add("RESULT", state.result?.toString() ?: "no result")
-                if (state.result?.reliable == true) startUpload(state)
+                if (state.result?.reliable == true) uploadOrAsk(state)
             }
             is SessionState.Failed -> if (keepStrap) handler.removeCallbacks(ticker) else stopSource()
             else -> Unit
@@ -470,10 +508,10 @@ class MeasurementController @JvmOverloads constructor(
     }
 
     private fun startUpload(done: SessionState.Finished) {
-        val result = done.result ?: return
+        if (done.result == null) return
         val r = record ?: return
         upload = UploadStatus.InProgress
-        uploader().upload(WellnessValues.from(r.date, result)) { res ->
+        uploader().upload(r.wellnessValues()!!) { res ->
             log.add("UPLOAD", res.toString())
             upload = UploadStatus.Done(res)
             if (res is UploadResult.Success && !res.dryRun && record === r) {
@@ -552,6 +590,7 @@ class MeasurementController @JvmOverloads constructor(
     companion object {
         private const val TICK_MS = 200L
         const val KEY_SETTLING = "settlingSeconds"
+        const val KEY_QUESTIONS = "morningQuestions"
         val SETTLING_CHOICES = listOf(0, 30, 60, 90)
         const val SIMULATED_NAME = "Simulated strap"
 

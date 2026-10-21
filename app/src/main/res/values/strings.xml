@@ -85,6 +85,24 @@
     <string name="keep_values_title">Keep your morning values intact</string>
     <string name="keep_values_body">This app writes your resting HR and HRV (rMSSD, SDNN) to today\'s wellness record in Intervals.icu. If another service (e.g. Garmin, Oura, Whoop) also sends resting HR or HRV to Intervals.icu, it may overwrite these values. To prevent that, open Intervals.icu settings, and for each connected service untick Resting HR and HRV.</string>
 
+    <!-- Morning questions (optional). Labels are Intervals.icu's own, 1 = best. -->
+    <string name="questions_title">Morning questions</string>
+    <string name="questions_switch">Morning questions</string>
+    <string name="questions_footer">After each measurement, answer optional questions on soreness, fatigue, motivation, injury and sickness. They are uploaded with your values.</string>
+    <string name="q_soreness">Soreness</string>
+    <string name="q_fatigue">Fatigue</string>
+    <string name="q_motivation">Motivation</string>
+    <string name="q_injury">Injury</string>
+    <string name="q_sick">Sick today?</string>
+    <string name="q_sick_note">Yes adds a sick day to your Intervals.icu calendar.</string>
+    <string name="q_footnote">Sent to your Intervals.icu wellness record</string>
+    <string name="q_upload">Upload</string>
+    <string name="q_skip">Skip</string>
+    <string-array name="q_low_to_extreme"><item>Low</item><item>Avg</item><item>High</item><item>Extreme</item></string-array>
+    <string-array name="q_motivation_labels"><item>Extreme</item><item>High</item><item>Avg</item><item>Low</item></string-array>
+    <string-array name="q_injury_labels"><item>None</item><item>Niggle</item><item>Poor</item><item>Injured</item></string-array>
+    <string-array name="q_no_yes"><item>No</item><item>Yes</item></string-array>
+
     <!-- Settings -->
     <string name="settings">Settings</string>
     <string name="settings_measurement">Measurement</string>

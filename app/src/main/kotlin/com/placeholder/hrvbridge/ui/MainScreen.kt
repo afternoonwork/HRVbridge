@@ -65,6 +65,8 @@ sealed interface MainPhase {
     data class Measuring(val secondsLeft: Int, val beats: Int, val poorContact: Boolean) : MainPhase
     data class Failed(val reason: FailReason) : MainPhase
     data class Result(val summary: ResultSummary) : MainPhase
+    /** Morning questions on: the result waits for answers before it uploads. */
+    data class Questions(val summary: ResultSummary) : MainPhase
     data object NotEnoughBeats : MainPhase
 }
 
@@ -103,6 +105,7 @@ data class MainScreenState(
         is MainPhase.Measuring -> if (handAngle >= 360) Milestone.RECORDING else null
         is MainPhase.CouldNotConnect, is MainPhase.Failed -> Milestone.PROBLEM
         MainPhase.NotEnoughBeats -> Milestone.FINISHED_UNRELIABLE
+        is MainPhase.Questions -> if (phase.summary.reliable) Milestone.FINISHED_RELIABLE else Milestone.FINISHED_UNRELIABLE
         is MainPhase.Result -> when (phase.summary.upload) {
             ResultSummary.Upload.UPLOADED -> Milestone.UPLOADED
             ResultSummary.Upload.FAILED, ResultSummary.Upload.RECONNECT -> Milestone.PROBLEM
@@ -136,6 +139,7 @@ data class MainScreenState(
             )
         }
         MainPhase.NotEnoughBeats -> DialModel(hand = DialModel.Hand.INK, handAngle = 720.0, band = DialModel.Band.MUTED, bandAngle = 360.0)
+        is MainPhase.Questions -> DialModel(heartRate = phase.summary.restingHr)
     }
 
     /** Phase name, announced when it changes. */
@@ -150,6 +154,7 @@ data class MainScreenState(
         is MainPhase.Measuring -> "Recording"
         is MainPhase.Result -> if (phase.summary.reliable) "Finished" else "Finished, unreliable"
         MainPhase.NotEnoughBeats -> "Finished, not enough beats"
+        is MainPhase.Questions -> "Morning questions"
     }
 
     /** The dial as one accessibility element. */
@@ -213,6 +218,8 @@ class MainActions(
     /** After a failed measurement, or "Repeat": a new measurement with the same strap. */
     val again: () -> Unit = {},
     val uploadAnyway: () -> Unit = {},
+    /** Morning questions: the answers, or null for Skip. */
+    val submitAnswers: (com.placeholder.hrvbridge.core.ReadinessAnswers?) -> Unit = {},
     val turnOnBluetooth: () -> Unit = {},
     val openSettings: () -> Unit = {},
 )
@@ -221,6 +228,10 @@ class MainActions(
 @Composable
 fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Modifier = Modifier,
                       dialDescription: String = state.dialDescription) {
+    if (state.phase is MainPhase.Questions) {
+        QuestionsPage(submit = actions.submitAnswers, modifier = modifier)
+        return
+    }
     BoxWithConstraints(modifier.fillMaxSize().background(hrv.bg)) {
         val size = dialSize(maxWidth)
         Column(Modifier.fillMaxSize()) {
@@ -263,7 +274,7 @@ private fun Top(state: MainScreenState) {
         is MainPhase.Result -> StepIndicator(
             Step.UPLOAD, if (p.summary.upload == ResultSummary.Upload.UPLOADED) StepMark.ACCENT else StepMark.HOLLOW,
         )
-        MainPhase.NotEnoughBeats -> StepIndicator(Step.UPLOAD, StepMark.HOLLOW)
+        MainPhase.NotEnoughBeats, is MainPhase.Questions -> StepIndicator(Step.UPLOAD, StepMark.HOLLOW)
     }
 }
 
@@ -301,6 +312,7 @@ private fun Below(state: MainScreenState, actions: MainActions) {
         is MainPhase.Measuring -> Readout(state, StatusMark.ACCENT, stringResource(R.string.phase_recording), p.secondsLeft,
             pluralStringResource(R.plurals.beats_recorded, p.beats, p.beats), p.poorContact)
         is MainPhase.Result -> Result(state, p.summary)
+        is MainPhase.Questions -> Unit
     }
 }
 
@@ -414,5 +426,6 @@ private fun Keys(state: MainScreenState, actions: MainActions) {
             PrimaryKey(stringResource(R.string.done), actions.done)
         }
         MainPhase.NotEnoughBeats -> PrimaryKey(stringResource(R.string.repeat), actions.again)
+        is MainPhase.Questions -> Unit
     }
 }
