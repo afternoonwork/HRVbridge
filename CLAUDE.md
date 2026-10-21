@@ -208,8 +208,10 @@ Draft connect-screen copy:
     timeouts. Enables 0x2A37 notifications via the CCCD, then calls
     `onConnected()`: the 10 s signal check starts only then. Packets are
     timestamped on arrival in the GATT callback. Every GATT callback goes
-    to the debug log ("BLE" lines). Debug builds switch between Bluetooth
-    and the simulated strap on the main screen.
+    to the debug log ("BLE" lines). Debug builds connect the simulated
+    strap from Settings. UI per `docs/ui-implementation-brief.md`;
+    `ScreenshotTest` renders every state into the `android-screenshots`
+    CI artifact.
 - Retry failed uploads on next app open (WorkManager only if really needed).
   Done: on app open (and right after saving a key) the newest pending
   session per date is sent in one `PUT wellness-bulk`
