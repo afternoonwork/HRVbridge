@@ -71,6 +71,13 @@ class MainFlowTest {
     }
 
     @Test
+    fun ringBreathesFromFiftyFiveToFullOpacityOverOneBeat() {
+        assertEquals(0.55f, com.placeholder.hrvbridge.ui.breath(0f), 0.001f)
+        assertEquals(1f, com.placeholder.hrvbridge.ui.breath(0.25f), 0.001f)
+        assertEquals(0.55f, com.placeholder.hrvbridge.ui.breath(1f), 0.001f)
+    }
+
+    @Test
     fun doneKeepsTheStrapAndRepeatMeasuresAgain() {
         val c = connected()
         c.setSettling(0)

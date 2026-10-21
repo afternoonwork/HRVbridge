@@ -49,6 +49,9 @@ class ReadinessFlowTest {
         c.enableQuestions(true)
         c.start(DebugStrap.create(app, "Vector: clean 70 beats", 60))
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3))
+        // The questions page comes only after the user taps "Upload to Intervals.icu".
+        assertEquals(UploadStatus.None, c.upload)
+        c.submitUpload()
         return c
     }
 

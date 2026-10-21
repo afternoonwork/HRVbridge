@@ -42,14 +42,13 @@ class SessionStore(private val dir: File) {
     }
 
     /**
-     * Sessions to retry on next app open: never uploaded, with a result that
-     * is reliable or that the user explicitly chose to upload anyway.
-     * Unreliable results without that override are never retried.
+     * Sessions to retry on next app open: never uploaded, with a result, and
+     * submitted by the user ("Upload" or "Upload anyway"). A session the user
+     * never submitted is never uploaded, reliable or not.
      */
     fun pendingUploads(): List<SessionRecord> = list().filter(::isPending)
 
     private fun isPending(s: SessionRecord): Boolean {
-        val r = s.result
-        return r != null && s.uploadedAt == null && (r.reliable || s.uploadOverride)
+        return s.result != null && s.uploadedAt == null && s.uploadOverride
     }
 }

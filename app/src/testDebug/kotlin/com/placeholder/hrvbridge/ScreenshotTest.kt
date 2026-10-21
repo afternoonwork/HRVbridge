@@ -74,6 +74,7 @@ class ScreenshotTest {
         "measuring" to MainScreenState(MainPhase.Measuring(36, 22, false), heartRate = 52, handAngle = 504.0),
         "failed-no-rr" to MainScreenState(MainPhase.Failed(FailReason.NO_RR), heartRate = 61),
         "failed-disconnected" to MainScreenState(MainPhase.Failed(FailReason.DISCONNECTED)),
+        "result" to MainScreenState(summary(upload = ResultSummary.Upload.NONE)),
         "uploading" to MainScreenState(summary(upload = ResultSummary.Upload.IN_PROGRESS)),
         "uploaded" to MainScreenState(summary(upload = ResultSummary.Upload.UPLOADED)),
         "unreliable" to MainScreenState(summary(reliable = false, upload = ResultSummary.Upload.NONE)),

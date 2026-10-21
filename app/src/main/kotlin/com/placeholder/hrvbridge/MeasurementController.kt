@@ -390,13 +390,13 @@ class MeasurementController @JvmOverloads constructor(
         cancelledInBackground = false
     }
 
-    /** User override for an unreliable measurement. */
-    fun uploadAnyway() {
+    /** "Upload to Intervals.icu", or "Upload anyway" for an unreliable result. Nothing uploads without it. */
+    fun submitUpload() {
         val done = session as? SessionState.Finished ?: return
         val r = record ?: return
         if (done.result != null && upload == UploadStatus.None) {
-            log.add("UPLOAD", "user override for unreliable measurement")
-            // Persist the override first, so a failed upload is retried later.
+            log.add("UPLOAD", if (done.result.reliable) "user tapped Upload" else "user override for unreliable measurement")
+            // Persist the submission first, so a failed upload is retried later.
             record = r.copy(uploadOverride = true).also(::save)
             uploadOrAsk(done)
         }
@@ -506,7 +506,6 @@ class MeasurementController @JvmOverloads constructor(
                 record = r
                 save(r)
                 log.add("RESULT", state.result?.toString() ?: "no result")
-                if (state.result?.reliable == true) uploadOrAsk(state)
             }
             is SessionState.Failed -> if (keepStrap) handler.removeCallbacks(ticker) else stopSource()
             else -> Unit

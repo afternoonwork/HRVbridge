@@ -232,8 +232,10 @@ Draft connect-screen copy:
   Done: on app open (and right after saving a key) the newest pending
   session per date is sent in one `PUT wellness-bulk`
   (`SessionStore.retryBatch()`), so an older session never overwrites a
-  newer value of the same day. Pending = never uploaded, with a result that
-  is reliable or that the user chose to "Upload anyway".
+  newer value of the same day. Nothing uploads automatically: the result
+  screen has "Upload to Intervals.icu" ("Upload anyway" when unreliable).
+  Pending = never uploaded, with a result, and the user tapped one of those
+  (`uploadOverride` true in the session JSON).
 
 - Release signing (upload key): `app/build.gradle.kts` reads
   `HRVBRIDGE_KEYSTORE_PATH`, `HRVBRIDGE_KEYSTORE_PASSWORD`,

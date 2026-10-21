@@ -29,7 +29,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.withFrameMillis
-import kotlinx.coroutines.delay
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.onSizeChanged
@@ -226,7 +225,8 @@ class MainActions(
     val done: () -> Unit = {},
     /** After a failed measurement, or "Repeat": a new measurement with the same strap. */
     val again: () -> Unit = {},
-    val uploadAnyway: () -> Unit = {},
+    /** "Upload to Intervals.icu" or "Upload anyway". */
+    val submitUpload: () -> Unit = {},
     /** Morning questions: the answers, or null for Skip. */
     val submitAnswers: (com.placeholder.hrvbridge.core.ReadinessAnswers?) -> Unit = {},
     val turnOnBluetooth: () -> Unit = {},
@@ -266,15 +266,14 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
     var belowHeight by remember { mutableIntStateOf(0) }
     var keysHeight by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
-    // While measuring the hand sweeps with the clock: every frame, or once a second
-    // with Remove animations (it still carries the time, only the smoothing goes).
-    val still = animationsOff()
+    // While measuring the hand sweeps smoothly with the clock, every frame, also with
+    // Remove animations (that scales animations, not the frame clock).
     var liveAngle by remember { mutableDoubleStateOf(state.handAngle) }
-    LaunchedEffect(state.handClock, still) {
+    LaunchedEffect(state.handClock) {
         val clock = state.handClock ?: return@LaunchedEffect
         while (true) {
             liveAngle = clock.angle(now())
-            if (still) delay(1_000) else withFrameMillis { }
+            withFrameMillis { }
         }
     }
     val liveState = if (state.handClock != null) state.copy(handAngle = liveAngle) else state
@@ -472,13 +471,17 @@ private fun Keys(state: MainScreenState, actions: MainActions) {
         } else {
             PrimaryKey(stringResource(R.string.try_again), actions.again)
         }
-        is MainPhase.Result -> if (!p.summary.reliable && p.summary.upload == ResultSummary.Upload.NONE) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        is MainPhase.Result -> when {
+            p.summary.upload != ResultSummary.Upload.NONE -> PrimaryKey(stringResource(R.string.done), actions.done)
+            p.summary.reliable ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    PrimaryKey(stringResource(R.string.upload_to_intervals), actions.submitUpload)
+                    TextKey(stringResource(R.string.done), actions.done)
+                }
+            else -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 PrimaryKey(stringResource(R.string.repeat), actions.again)
-                TextKey(stringResource(R.string.upload_anyway), actions.uploadAnyway)
+                TextKey(stringResource(R.string.upload_anyway), actions.submitUpload)
             }
-        } else {
-            PrimaryKey(stringResource(R.string.done), actions.done)
         }
         MainPhase.NotEnoughBeats -> PrimaryKey(stringResource(R.string.repeat), actions.again)
         is MainPhase.Questions -> Unit
