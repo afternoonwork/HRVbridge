@@ -46,15 +46,17 @@ struct DiscoveredStrap: Identifiable, Equatable {
 /// Delegate callbacks arrive on the main queue. Every event goes to `log`.
 @Observable
 final class HeartRateCentral: NSObject {
+    enum BluetoothProblem: Equatable { case off, notAllowed, unsupported }
+
     enum Status: Equatable {
         case idle
-        case bluetoothUnavailable(String)
+        case bluetoothUnavailable(BluetoothProblem)
         case scanning
         case connecting(String)
         case connected(String)
         case disconnected(String)
-        /// Could not connect; the message is shown as is.
-        case failed(String)
+        /// Could not connect within 15 s.
+        case couldNotConnect(String)
     }
 
     private(set) var status: Status = .idle
@@ -83,7 +85,6 @@ final class HeartRateCentral: NSObject {
     private static let rememberedKey = "lastStrapId"
     /// CoreBluetooth never times out a connect; a strap held by another app can stall.
     static let connectTimeout: Duration = .seconds(15)
-    static let connectTimeoutMessage = "Couldn't connect. Close other apps using the strap (e.g. Polar Flow) and try again."
 
     init(log: DebugLog) {
         self.log = log
@@ -121,7 +122,7 @@ final class HeartRateCentral: NSObject {
             self.log.add("BLE", "connect timeout after 15 s, cancelling")
             self.manager?.cancelPeripheralConnection(p)
             self.ended(p, "connect timeout")
-            self.status = .failed(Self.connectTimeoutMessage)
+            self.status = .couldNotConnect(p.name ?? "strap")
         }
     }
 
@@ -213,9 +214,9 @@ final class HeartRateCentral: NSObject {
         }
         switch state {
         case .poweredOn: beginScanIfReady()
-        case .poweredOff: status = .bluetoothUnavailable("Bluetooth is off.")
-        case .unauthorized: status = .bluetoothUnavailable("Bluetooth access is not allowed. Enable it in Settings, HRV Bridge.")
-        case .unsupported: status = .bluetoothUnavailable("This device does not support Bluetooth LE.")
+        case .poweredOff: status = .bluetoothUnavailable(.off)
+        case .unauthorized: status = .bluetoothUnavailable(.notAllowed)
+        case .unsupported: status = .bluetoothUnavailable(.unsupported)
         default: break
         }
     }

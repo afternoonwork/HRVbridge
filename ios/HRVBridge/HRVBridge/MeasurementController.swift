@@ -1,6 +1,7 @@
 import Foundation
 import HRVCore
 import Observation
+import SwiftUI
 import UIKit
 
 enum UploadStatus: Equatable {
@@ -28,6 +29,15 @@ final class MeasurementController {
     private(set) var retry: RetryStatus = .none
     private(set) var apiKey: ApiKey?
     private(set) var cancelledInBackground = false
+    /// Arrival time of the latest beat that moved the hand (every beat while settling,
+    /// accepted beats while measuring), on the session clock.
+    private(set) var lastBeatMs: Int64?
+    /// Cumulative hand angle in degrees: settling 0 to 360, measuring 360 to 720, done 720.
+    /// Only ever increases during a measurement.
+    private(set) var handAngle: Double = 0
+    /// Result of the check after "Save key"; nil while checking or before a save.
+    private(set) var keyCheck: KeyCheck?
+    private(set) var checkingKey = false
 
     /// 0, 30, 60 or 90 s; remembered across launches.
     private(set) var stabilisationSeconds: Int
@@ -46,6 +56,10 @@ final class MeasurementController {
     @ObservationIgnored private var record: SessionRecord?
     @ObservationIgnored private var startedAt = Date()
     @ObservationIgnored private var ticker: Task<Void, Never>?
+    @ObservationIgnored private var config = SessionConfig()
+    /// RR of the measuring phase so far, to tell accepted beats from rejected ones for the
+    /// hand. The same filter as the result; the result itself still comes from the session.
+    @ObservationIgnored private var measuringRr: [Double] = []
 
     init(log: DebugLog) {
         self.log = log
@@ -72,13 +86,35 @@ final class MeasurementController {
         }
         apiKey = key
         log.add("AUTH", "API key saved")
-        retryPending()
+        checkKey(key)
         return .saved
+    }
+
+    /// One authenticated read (today's wellness record). Rejected: the key is removed again.
+    /// Anything else keeps it; retry of pending sessions follows a valid or unchecked key.
+    private func checkKey(_ key: ApiKey) {
+        keyCheck = nil
+        checkingKey = true
+        let spec = Intervals.getWellness(LocalDate(date: Date()), apiKey: key)
+        Task { [weak self] in
+            guard let self else { return }
+            let outcome = KeyCheck(await self.client.send(spec))
+            self.log.add("AUTH", "key check: \(outcome)")
+            self.checkingKey = false
+            self.keyCheck = outcome
+            if outcome == .rejected {
+                KeychainStore.delete()
+                self.apiKey = nil
+            } else {
+                self.retryPending()
+            }
+        }
     }
 
     func disconnectIntervals() {
         KeychainStore.delete()
         apiKey = nil
+        keyCheck = nil
         log.add("AUTH", "API key removed")
     }
 
@@ -96,7 +132,10 @@ final class MeasurementController {
         upload = .none
         record = nil
         startedAt = Date()
-        let config = SessionConfig(stabilisationMs: Int64(stabilisationSeconds) * 1000)
+        config = SessionConfig(stabilisationMs: Int64(stabilisationSeconds) * 1000)
+        measuringRr = []
+        lastBeatMs = nil
+        setHand(0, animated: false)
         log.add("SESSION", "start \(startedAt), stabilisation \(stabilisationSeconds) s")
         let s = MeasurementSession(config: config, startMs: Clock.nowMs())
         session = s
@@ -113,6 +152,7 @@ final class MeasurementController {
     func onPacket(_ bytes: [UInt8], at t: Int64) {
         guard let s = session else { return }
         s.onPacket(bytes, timeMs: t)
+        moveHand(bytes, at: t, state: s.state)
         publish()
     }
 
@@ -129,6 +169,9 @@ final class MeasurementController {
         session = nil
         state = nil
         upload = .none
+        measuringRr = []
+        lastBeatMs = nil
+        setHand(0, animated: false)
         UIApplication.shared.isIdleTimerDisabled = false
     }
 
@@ -166,6 +209,42 @@ final class MeasurementController {
         record.flatMap { try? $0.jsonData() }.map { String(decoding: $0, as: UTF8.self) }
     }
 
+    // MARK: Hand
+
+    /// The hand steps per beat: every beat while settling, accepted beats while measuring.
+    /// Angle from the session's remaining time at the beat's arrival (wall clock elsewhere).
+    private func moveHand(_ bytes: [UInt8], at t: Int64, state: SessionState) {
+        guard let rr = HeartRateParser.parse(bytes)?.rrIntervalsMs, !rr.isEmpty else { return }
+        switch state {
+        case let .stabilising(remaining, _) where config.stabilisationMs > 0:
+            let total = Double(config.stabilisationMs)
+            lastBeatMs = t
+            setHand((total - Double(remaining)) / total * 360)
+        case let .measuring(remaining, _, _):
+            let first = measuringRr.count
+            measuringRr += rr
+            let accepted = ArtefactFilter.filter(measuringRr, config: config.filter).accepted
+            guard accepted[first...].contains(true) else { return }
+            let total = Double(config.measurementMs)
+            lastBeatMs = t
+            // With 0 s settling there is no first turn: jump to 12 without spinning.
+            if handAngle < 360 && config.stabilisationMs == 0 { setHand(360, animated: false) }
+            setHand(360 + (total - Double(remaining)) / total * 360)
+        default:
+            break
+        }
+    }
+
+    private func setHand(_ angle: Double, animated: Bool = true) {
+        if animated {
+            handAngle = max(handAngle, min(angle, 720))
+        } else {
+            var t = Transaction()
+            t.disablesAnimations = true
+            withTransaction(t) { handAngle = angle }
+        }
+    }
+
     private func tick() {
         guard let s = session else { return }
         s.onTick(Clock.nowMs())
@@ -183,10 +262,11 @@ final class MeasurementController {
             stopTicking()
             // The wellness record is the local day the measurement started, not ended.
             let r = SessionRecord(startedAt: startedAt, date: LocalDate(date: startedAt),
-                                  config: SessionConfig(stabilisationMs: Int64(stabilisationSeconds) * 1000),
+                                  config: config,
                                   series: series, result: result, malformedPackets: s.malformedPackets, uploadedAt: nil)
             record = r
             save(r)
+            setHand(720)
             log.add("RESULT", result.map { "\($0)" } ?? "no result")
             if result?.reliable == true { startUpload(r) }
         case .failed:
