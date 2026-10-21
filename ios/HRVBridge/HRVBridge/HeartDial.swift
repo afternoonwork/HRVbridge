@@ -89,7 +89,7 @@ struct HeartDial: View {
         let c = CGPoint(x: size.width / 2, y: size.height / 2)
         for i in 0..<60 {
             let major = i % 5 == 0
-            let a = Double(i) / 60 * 2 * .pi
+            let a = CGFloat(i) / 60 * 2 * CGFloat.pi
             let from = (major ? 0.818 : 0.856) * r, to = 0.917 * r
             var p = Path()
             p.move(to: point(c, a, from))
@@ -152,7 +152,7 @@ struct HeartDial: View {
         reduceMotion ? nil : .spring(response: 0.12, dampingFraction: 0.7)
     }
 
-    private func point(_ c: CGPoint, _ angle: Double, _ radius: CGFloat) -> CGPoint {
+    private func point(_ c: CGPoint, _ angle: CGFloat, _ radius: CGFloat) -> CGPoint {
         CGPoint(x: c.x + radius * sin(angle), y: c.y - radius * cos(angle))
     }
 }
