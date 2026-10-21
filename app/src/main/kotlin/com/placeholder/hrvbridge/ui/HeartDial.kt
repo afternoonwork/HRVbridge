@@ -195,28 +195,30 @@ fun HeartDial(model: DialModel, size: Dp, modifier: Modifier = Modifier, pulse: 
                 }
             }
         }
-        // Window: 96 x 46, 0.379 R below the centre. Filled: WindowFill (darker than the
-        // accent) with white text in both themes.
+        // Window: 96 x 46 at a 264 dial, scaled with the dial, 0.379 R below the centre.
+        // Filled: WindowFill (darker than the accent) with white text in both themes.
         val filled = model.windowFilled()
+        val k = size / 264.dp
+        val shape = RoundedCornerShape(10.dp * k)
         Box(
             Modifier
                 .offset(y = r * 0.379f)
-                .size(96.dp, 46.dp)
+                .size(96.dp * k, 46.dp * k)
                 .then(
-                    if (filled) Modifier.background(WindowFill,RoundedCornerShape(10.dp))
-                    else Modifier.background(c.bg, RoundedCornerShape(10.dp)).border(1.dp, c.line, RoundedCornerShape(10.dp)),
+                    if (filled) Modifier.background(WindowFill, shape)
+                    else Modifier.background(c.bg, shape).border(1.dp, c.line, shape),
                 ),
             contentAlignment = Alignment.Center,
         ) {
             if (model.label != null && filled) {
-                // White on #C84A16 is 4.7:1, so the 14 sp bold label meets WCAG AA.
-                Text(model.label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp), fontWeight = FontWeight.Bold,
+                // White on #C84A16 is 4.7:1, so the bold label (14 sp at 264, at least 12) meets WCAG AA.
+                Text(model.label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = maxOf(12f, 14f * k).sp), fontWeight = FontWeight.Bold,
                      color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             } else if (model.label != null) {
                 Text(model.label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold,
                      color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             } else {
-                Text(model.heartRate?.toString() ?: "", style = Readout.hr, color = if (filled) Color.White else c.ink, maxLines = 1)
+                Text(model.heartRate?.toString() ?: "", style = Readout.hr.copy(fontSize = Readout.hr.fontSize * k), color = if (filled) Color.White else c.ink, maxLines = 1)
             }
         }
         if (model.hand != DialModel.Hand.HIDDEN) {

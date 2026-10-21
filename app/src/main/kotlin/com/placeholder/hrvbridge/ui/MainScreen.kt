@@ -23,7 +23,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableDoubleStateOf
@@ -241,7 +245,7 @@ class MainActions(
 @Composable
 fun MainTopBar(showSettings: Boolean, openSettings: () -> Unit) {
     val label = stringResource(R.string.settings)
-    androidx.compose.material3.TopAppBar(
+    androidx.compose.material3.CenterAlignedTopAppBar(
         title = { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium) },
         actions = {
             if (showSettings) {
@@ -268,11 +272,13 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
     var topHeight by remember { mutableIntStateOf(0) }
     var belowHeight by remember { mutableIntStateOf(0) }
     var keysHeight by remember { mutableIntStateOf(0) }
-    // Heights of the step indicator, the tallest readout or result, and the result keys,
-    // measured without placing them, so the dial keeps one size from Connected to the result.
+    // Heights of the step indicator, the taller of the settling and measuring readouts, and
+    // the Start key, measured without placing them, so the dial keeps one size from Connected
+    // through measuring. Other states only shrink it if their content would not fit.
     var stepHeight by remember { mutableIntStateOf(0) }
     var belowProbe by remember { mutableIntStateOf(0) }
     var keysProbe by remember { mutableIntStateOf(0) }
+    val measured = remember { BooleanArray(1) }
     val density = LocalDensity.current
     // While measuring the hand sweeps smoothly with the clock, every frame, also with
     // Remove animations (that scales animations, not the frame clock).
@@ -291,12 +297,16 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         } else {
             Space.dialToReadout - 12.dp
         }
-        // The larger gap (result) and the reserves, so Start, phase changes and the result keep the size.
-        val others = with(density) {
-            (topHeight + maxOf(belowHeight, belowProbe + 16.dp.roundToPx()) +
-                maxOf(keysHeight, keysProbe + (12.dp + Space.bottom).roundToPx())).toDp()
-        } + 8.dp + Space.stepsToDial + Space.dialToMetrics
-        val size = maxOf(160.dp, minOf(dialSize(maxWidth), maxHeight - others))
+        val fixed = 8.dp + Space.stepsToDial
+        val running = with(density) {
+            (topHeight + belowProbe + 16.dp.roundToPx() + keysProbe + (12.dp + Space.bottom).roundToPx()).toDp()
+        } + fixed + Space.dialToReadout - 12.dp
+        val current = with(density) { (topHeight + belowHeight + keysHeight).toDp() } + fixed + gap
+        val target = maxOf(160.dp, minOf(dialSize(maxWidth), maxHeight - maxOf(running, current)))
+        // Snap until the first measured layout, so opening the screen does not animate.
+        val size by animateDpAsState(target, if (measured[0]) tween(250) else snap(), label = "dialSize")
+        val ready = topHeight > 0 && belowProbe > 0 && keysProbe > 0
+        SideEffect { measured[0] = ready }
         Column(Modifier.fillMaxSize()) {
             Column(
                 Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = Space.margin),
@@ -316,7 +326,6 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
                     Probe({ belowProbe = it }) {
                         Below(state.copy(phase = MainPhase.Settling(60, false)), actions)
                         Below(state.copy(phase = MainPhase.Measuring(60, 60, false)), actions)
-                        Below(state.copy(phase = MainPhase.Result(probeResult(ResultSummary.Upload.UPLOADED))), actions)
                     }
                     Below(state, actions)
                 }
@@ -326,15 +335,13 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
                 contentAlignment = Alignment.Center,
             ) {
                 Probe({ keysProbe = it }) {
-                    Keys(state.copy(phase = MainPhase.Result(probeResult(ResultSummary.Upload.NONE))), actions)
+                    Keys(state.copy(phase = MainPhase.Connected("")), actions)
                 }
                 Keys(state, actions)
             }
         }
     }
 }
-
-private fun probeResult(upload: ResultSummary.Upload) = ResultSummary(52, 68.4, 61.2, 64, 64, true, upload)
 
 /** Measures [content] (children stacked) at the available width without placing it: no space, not drawn, no semantics. */
 @Composable
