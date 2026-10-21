@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Design tokens from the HRV Bridge design system (docs/ui-implementation-brief.md). */
+/** Design tokens from the SignON design system (docs/ui-implementation-brief.md). */
 @Immutable
 data class HrvColors(
     val bg: Color,

@@ -160,7 +160,7 @@ struct MainScreenState: Equatable {
         case let .bluetooth(problem):
             switch problem {
             case .off: return "Bluetooth is off. Turn it on in Control Centre or Settings, then try again."
-            case .notAllowed: return "Bluetooth access is not allowed. HRV Bridge needs it to find your strap. Allow it in Settings."
+            case .notAllowed: return "Bluetooth access is not allowed. \(Theme.appName) needs it to find your strap. Allow it in Settings."
             case .unsupported: return "This device does not support Bluetooth LE."
             }
         case let .failed(reason): return Self.failText(reason)

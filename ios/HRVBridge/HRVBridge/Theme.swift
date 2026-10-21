@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Design tokens from the HRV Bridge design system (docs/ui-implementation-brief.md).
+/// Design tokens from the SignON design system (docs/ui-implementation-brief.md).
 /// UI code uses only these names. Light and dark follow the system.
 enum Theme {
     static let bg = dynamic(0xFDFDFC, 0x131312)
@@ -18,7 +18,7 @@ enum Theme {
     static let accentFill = dynamic(0xE2561C, 0xE2561C)
 
     /// The app name is a placeholder: keep it in one place.
-    static let appName = "HRV Bridge"
+    static let appName = "SignON"
 
     private static func dynamic(_ light: UInt32, _ dark: UInt32) -> Color {
         Color(uiColor: UIColor { traits in

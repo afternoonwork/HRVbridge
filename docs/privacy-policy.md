@@ -1,10 +1,10 @@
-# HRV Bridge privacy policy (draft)
+# SignON privacy policy (draft)
 
 Draft, not yet published. Placeholders are in [square brackets].
 
 Effective date: [date]
 
-HRV Bridge ("the app") records a short morning heart measurement from your
+SignON ("the app") records a short morning heart measurement from your
 Bluetooth chest strap and writes the results to your own Intervals.icu
 account. This policy explains what the app does with your data. In short:
 your data goes from your phone to Intervals.icu and nowhere else.
@@ -26,7 +26,7 @@ your phone.
   measurement the app sends your resting heart rate, rMSSD and SDNN for that
   day to your wellness record in Intervals.icu, over an encrypted (HTTPS)
   connection, using the personal API key you entered.
-- **No developer server.** The developer of HRV Bridge does not run a server
+- **No developer server.** The developer of SignON does not run a server
   for the app and does not receive your measurements, your API key or any
   other data.
 - **No analytics, no advertising, no tracking.** The app contains no
@@ -77,7 +77,7 @@ only with the recipient you choose. It never contains your API key.
 
 ## Not a medical device
 
-HRV Bridge is not a medical device and is not intended to diagnose, treat or
+SignON is not a medical device and is not intended to diagnose, treat or
 prevent any condition. Do not use it for medical decisions.
 
 ## Children
