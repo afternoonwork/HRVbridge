@@ -3,6 +3,7 @@ package com.placeholder.hrvbridge.core
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.LocalDate
 
 sealed interface ApiResult {
     data class Success(val code: Int, val body: String) : ApiResult
@@ -13,6 +14,25 @@ sealed interface ApiResult {
     data class HttpError(val code: Int, val body: String) : ApiResult
 
     data class NetworkError(val message: String) : ApiResult
+}
+
+/** Outcome of the key check after "Save key". */
+enum class KeyCheck {
+    VALID,
+
+    /** 401/403: Intervals.icu did not accept the key. */
+    REJECTED,
+
+    /** Anything else (offline, server error): the key is kept, unchecked. */
+    UNKNOWN;
+
+    companion object {
+        fun of(result: ApiResult): KeyCheck = when (result) {
+            is ApiResult.Success -> VALID
+            is ApiResult.Unauthorised -> REJECTED
+            is ApiResult.HttpError, is ApiResult.NetworkError -> UNKNOWN
+        }
+    }
 }
 
 sealed interface TokenExchange {
@@ -36,6 +56,10 @@ class IntervalsClient(
 
     fun putWellnessBulk(credential: Credential, values: List<WellnessValues>): ApiResult =
         send("PUT", Intervals.wellnessBulkUrl(baseUrl), credential, JSON, Intervals.bulkBody(values), logBody = true)
+
+    /** Key check: reads one wellness record (local [date]), same access as the upload. */
+    fun checkKey(credential: Credential, date: LocalDate): KeyCheck =
+        KeyCheck.of(send("GET", Intervals.wellnessUrl(date, baseUrl), credential, null, null, logBody = false))
 
     fun disconnect(credential: Credential): ApiResult =
         send("DELETE", Intervals.disconnectUrl(baseUrl), credential, null, null, logBody = false)

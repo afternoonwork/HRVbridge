@@ -131,4 +131,27 @@ class IntervalsClientTest {
             assertFalse(text.contains(secret), "log leaked $secret:\n$text")
         }
     }
+
+    @Test
+    fun keyCheckReadsTodaysWellnessRecord() {
+        assertEquals(KeyCheck.VALID, client.checkKey(apiKey, LocalDate.of(2026, 10, 21)))
+        val s = seen.single()
+        assertEquals("GET", s.method)
+        assertEquals("/api/v1/athlete/0/wellness/2026-10-21", s.path)
+        assertEquals("Basic QVBJX0tFWTphYmMxMjM=", s.headers["authorization"])
+        assertEquals("", s.body)
+    }
+
+    @Test
+    fun keyCheckOutcomes() {
+        val day = LocalDate.of(2026, 10, 21)
+        status = 401
+        assertEquals(KeyCheck.REJECTED, client.checkKey(apiKey, day))
+        status = 403
+        assertEquals(KeyCheck.REJECTED, client.checkKey(apiKey, day))
+        status = 500
+        assertEquals(KeyCheck.UNKNOWN, client.checkKey(apiKey, day))
+        val offline = IntervalsClient(baseUrl = "http://127.0.0.1:1", timeoutMs = 1000)
+        assertEquals(KeyCheck.UNKNOWN, offline.checkKey(apiKey, day))
+    }
 }
