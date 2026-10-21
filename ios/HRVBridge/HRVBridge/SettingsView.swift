@@ -19,6 +19,13 @@ struct SettingsView: View {
                 Text("Time to lie still before the 60 s measurement. Beats from this time are not used.")
             }
 
+            Section {
+                Toggle("Morning questions", isOn: Binding(get: { model.measurement.questionsEnabled },
+                                                          set: { model.measurement.setQuestionsEnabled($0) }))
+            } footer: {
+                Text("After each measurement, answer optional questions on soreness, fatigue, motivation, injury and sickness. They are uploaded with your values.")
+            }
+
             Section("Intervals.icu") {
                 LabeledContent("API key", value: "Connected")
                 Button("Disconnect", role: .destructive) { model.disconnectIntervals() }

@@ -25,6 +25,8 @@ enum MainPhase: Equatable {
     case measuring(secondsLeft: Int, beats: Int, poorContact: Bool)
     case failed(FailReason)
     case result(ResultSummary)
+    /// Morning questions on: the result waits for answers before it uploads.
+    case questions(ResultSummary)
     case notEnoughBeats
 }
 
@@ -61,11 +63,13 @@ struct MainScreenState: Equatable {
         case .measuring: return handAngle >= 360 ? .recording : nil
         case .couldNotConnect, .failed: return .problem
         case .notEnoughBeats: return .finishedUnreliable
+        case let .questions(r): return r.reliable ? .finishedReliable : .finishedUnreliable
         case let .result(r):
             switch r.upload {
             case .uploaded: return .uploaded
             case .failed, .reconnectNeeded: return .problem
-            case .none, .inProgress, .notConnected: return r.reliable ? .finishedReliable : .finishedUnreliable
+            case .none, .awaitingAnswers, .inProgress, .notConnected:
+                return r.reliable ? .finishedReliable : .finishedUnreliable
             }
         default: return nil
         }
@@ -95,7 +99,7 @@ struct MainScreenState: Equatable {
                 return DialModel(window: .label("no strap"), faint: true)
             }
             return DialModel(window: .heartRate(heartRate))
-        case let .result(r):
+        case let .result(r), let .questions(r):
             return DialModel(window: .heartRate(r.restingHr), hand: r.reliable ? .accent : .ink, handAngle: 720,
                              band: r.reliable ? .measure : .muted, bandAngle: 360)
         case .notEnoughBeats:
@@ -115,6 +119,7 @@ struct MainScreenState: Equatable {
         case .settling: return "Settling"
         case .measuring: return "Recording"
         case let .result(r): return r.reliable ? "Finished" : "Finished, unreliable"
+        case .questions: return "Morning questions"
         case .notEnoughBeats: return "Finished, not enough beats"
         }
     }
@@ -159,7 +164,7 @@ struct MainScreenState: Equatable {
             case .none:
                 return r.reliable ? nil
                     : "Measurement unreliable, please repeat. \(r.total - r.accepted) of \(r.total) beats were discarded."
-            case .inProgress, .uploaded: return nil
+            case .awaitingAnswers, .inProgress, .uploaded: return nil
             case .notConnected: return "Not uploaded: connect to Intervals.icu first. It will upload once you have saved your key."
             case .reconnectNeeded: return "Intervals.icu did not accept the stored key. Please reconnect."
             case .failed: return "Upload failed. Your result is saved on this phone. The app will try again next time it opens."
@@ -190,6 +195,8 @@ struct MainActions {
     /// After a failed measurement, or "Repeat": a new measurement with the same strap.
     var again: () -> Void = {}
     var uploadAnyway: () -> Void = {}
+    /// Morning questions: the answers, or nil for Skip.
+    var submitAnswers: (ReadinessAnswers?) -> Void = { _ in }
     var openSettings: () -> Void = {}
 }
 
@@ -201,6 +208,14 @@ struct MainScreenView: View {
     var actions = MainActions()
 
     var body: some View {
+        if case .questions = state.phase {
+            QuestionsPage(submit: actions.submitAnswers)
+        } else {
+            dialLayout
+        }
+    }
+
+    private var dialLayout: some View {
         GeometryReader { geo in
             let dialSize = HeartDial.size(forWidth: geo.size.width)
             ScrollView {
@@ -261,6 +276,8 @@ struct MainScreenView: View {
             StepIndicator(current: .check, mark: .hollow)
         case let .result(r):
             StepIndicator(current: .upload, mark: r.upload == .uploaded ? .accent : .hollow)
+        case .questions:
+            StepIndicator(current: .upload, mark: .hollow)
         case .notEnoughBeats:
             StepIndicator(current: .upload, mark: .hollow)
         }
@@ -305,6 +322,8 @@ struct MainScreenView: View {
                     detail: beats == 1 ? "1 beat recorded" : "\(beats) beats recorded", poor: poor)
         case let .result(r):
             result(r)
+        case .questions:
+            EmptyView()
         }
     }
 
@@ -433,6 +452,8 @@ struct MainScreenView: View {
             }
         case .notEnoughBeats:
             Button("Repeat", action: actions.again).buttonStyle(KeyStyle())
+        case .questions:
+            EmptyView()
         }
     }
 }

@@ -129,9 +129,10 @@ final class AppModel {
             return .measuring(secondsLeft: seconds(remaining), beats: beats, poorContact: poor)
         case let .finished(rr, _, result):
             guard let r = result else { return .notEnoughBeats }
-            return .result(ResultSummary(restingHr: r.restingHr, rmssd: r.rmssdRounded, sdnn: r.sdnnRounded,
-                                         accepted: r.acceptedBeats, total: rr.count, reliable: r.reliable,
-                                         upload: measurement.upload))
+            let summary = ResultSummary(restingHr: r.restingHr, rmssd: r.rmssdRounded, sdnn: r.sdnnRounded,
+                                        accepted: r.acceptedBeats, total: rr.count, reliable: r.reliable,
+                                        upload: measurement.upload)
+            return measurement.upload == .awaitingAnswers ? .questions(summary) : .result(summary)
         case let .failed(reason):
             return .failed(reason)
         }
@@ -215,6 +216,7 @@ struct MainView: View {
             done: { model.measurement.cancel() },
             again: { model.measureAgain() },
             uploadAnyway: { model.measurement.uploadAnyway() },
+            submitAnswers: { model.measurement.submitAnswers($0) },
             openSettings: {
                 if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
             })
