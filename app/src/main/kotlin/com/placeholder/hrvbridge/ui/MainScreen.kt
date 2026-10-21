@@ -476,7 +476,7 @@ private fun Keys(state: MainScreenState, actions: MainActions) {
             p.summary.reliable ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     PrimaryKey(stringResource(R.string.upload_to_intervals), actions.submitUpload)
-                    TextKey(stringResource(R.string.done), actions.done)
+                    TextKey(stringResource(R.string.close_without_uploading), actions.done)
                 }
             else -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 PrimaryKey(stringResource(R.string.repeat), actions.again)

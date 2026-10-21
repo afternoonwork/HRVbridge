@@ -77,7 +77,7 @@ Three screens. Everything from finding the strap to the uploaded result happens 
 | Settling (its first 10 s also run the signal check) | steps: settle | ink hand, grey band | "Settling", countdown, "Sit still and breathe normally." | Stop |
 | Measuring | steps: measure (orange) | orange hand and band | orange dot "Recording", countdown, "<n> beats recorded" | Stop |
 | Failure (no RR, no data, implausible, disconnected) | steps: current step hollow | live HR or faint | warning with the existing CLAUDE.md / FailReason sentence | Done (no RR) or Try again |
-| Done (nothing uploads automatically) | steps: upload hollow | full orange ring, resting HR, hand at 12 | rMSSD, SDNN, "<accepted> of <total> beats used" | Upload to Intervals.icu; text key "Done" |
+| Done (nothing uploads automatically) | steps: upload hollow | full orange ring, resting HR, hand at 12 | rMSSD, SDNN, "<accepted> of <total> beats used" | Upload to Intervals.icu; text key "Close without uploading" |
 | Done, uploading (after "Upload to Intervals.icu", or the questions page if on) | steps: upload hollow | full orange ring, resting HR, hand at 12 | rMSSD, SDNN, "<accepted> of <total> beats used", spinner "Uploading to Intervals.icu…" | Done |
 | Uploaded | steps: upload orange | full orange ring | orange dot "Uploaded to Intervals.icu" + tick | Done |
 | Unreliable | steps: upload hollow | full grey ring | values in ink-2, warning "Measurement unreliable, please repeat. <n> of <total> beats were discarded." | Repeat; text key "Upload anyway" |
@@ -186,7 +186,7 @@ The measurement controller exposes the running phase's start and length on its c
 - [ ] Light and dark both checked; no pure white or black backgrounds
 - [ ] Hand sweeps with the wall clock, never moves backwards, crosses 12 into recording; the orange ring breathes once per accepted beat while measuring
 - [ ] Reduce Motion / Remove animations switches colours instantly; the hand still updates every frame and the ring still breathes
-- [ ] Nothing uploads automatically: the result shows "Upload to Intervals.icu" and "Done" ("Repeat" and "Upload anyway" when unreliable)
+- [ ] Nothing uploads automatically: the result shows "Upload to Intervals.icu" and "Close without uploading" ("Repeat" and "Upload anyway" when unreliable)
 - [ ] Dial window orange #E2561C with white text in light and dark; "poor contact" 14 bold fits without ellipsis
 - [ ] Haptics fire only at the listed moments
 - [ ] VoiceOver and TalkBack read the dial and steps as specified
