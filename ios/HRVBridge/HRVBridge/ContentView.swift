@@ -121,8 +121,6 @@ final class AppModel {
         /// Rounded up, so "1 s" shows until the phase ends.
         func seconds(_ ms: Int64) -> Int { Int(max(0, (ms + 999) / 1000)) }
         switch state {
-        case let .checking(elapsed, poor):
-            return .checking(secondsLeft: seconds(SessionConfig().checkMs - elapsed), poorContact: poor)
         case let .stabilising(remaining, poor):
             return .settling(secondsLeft: seconds(remaining), poorContact: poor)
         case let .measuring(remaining, beats, poor):

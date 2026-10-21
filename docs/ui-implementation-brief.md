@@ -73,11 +73,10 @@ Three screens. Everything from finding the strap to the uploaded result happens 
 | Couldn't connect (15 s) | hollow dot | faint, "no strap" | warning "Couldn't connect to <name>. Check the strap is on and the electrodes are moist. Close other apps that connect to your heart rate monitor." | Try again |
 | Bluetooth off | hollow dot | faint, "Bluetooth off" | warning "Bluetooth is off. Turn it on in Control Centre or Settings, then try again." | Try again |
 | Not allowed | hollow dot | faint, "no access" | warning "Bluetooth access is not allowed. HRV Bridge needs it to find your strap. Allow it in Settings." | Open Settings |
-| Signal check (10 s) | steps: check | live HR, hand at 12 | "Checking signal", countdown, "Making sure the strap sends beat-to-beat data." | Stop |
 | Poor contact | steps | window "poor contact" | phase and countdown inline, warning "Poor contact. Moisten the electrodes and make sure the strap fits snugly." | Stop |
-| Settling | steps: settle | ink hand, grey band | "Settling", countdown, "Sit still and breathe normally." | Stop |
+| Settling (its first 10 s also run the signal check) | steps: settle | ink hand, grey band | "Settling", countdown, "Sit still and breathe normally." | Stop |
 | Measuring | steps: measure (orange) | orange hand and band | orange dot "Recording", countdown, "<n> beats recorded" | Stop |
-| Failure (no RR, no data, implausible, disconnected) | steps: check hollow | live HR or faint | warning with the existing CLAUDE.md / FailReason sentence | Done (no RR) or Try again |
+| Failure (no RR, no data, implausible, disconnected) | steps: current step hollow | live HR or faint | warning with the existing CLAUDE.md / FailReason sentence | Done (no RR) or Try again |
 | Done, uploading | steps: upload hollow | full orange ring, resting HR, hand at 12 | rMSSD, SDNN, "<accepted> of <total> beats used", spinner "Uploading to Intervals.icu…" | Done |
 | Uploaded | steps: upload orange | full orange ring | orange dot "Uploaded to Intervals.icu" + tick | Done |
 | Unreliable | steps: upload hollow | full grey ring | values in ink-2, warning "Measurement unreliable, please repeat. <n> of <total> beats were discarded." | Repeat; text key "Upload anyway" |
@@ -144,7 +143,7 @@ Motion is driven by data: if no beat arrives, nothing moves.
 ## Accessibility and copy
 
 - **Dial:** one accessibility element with a combined label, for example "Heart rate 53 beats per minute. Recording, 36 seconds left." Update the value at most every 5 s; announce phase changes immediately.
-- **Step indicator:** one element, "Step 3 of 4: measure". Steps differ by fill and weight, not only colour.
+- **Step indicator:** one element, "Step 2 of 3: measure". Steps differ by fill and weight, not only colour.
 - **Warnings** are announced when they appear (iOS `AccessibilityNotification.Announcement`, Android `liveRegion = Polite`). They are never orange or red: outline, icon and words carry them.
 - **Text size:** everything except the dial numerals follows Dynamic Type and font scaling. At the largest sizes the readout may wrap; the dial stays fixed. Nothing may be cut off on the iPhone SE at default size.
 - **Contrast:** all text pairs in the token table pass WCAG AA in both themes. Use line-strong for the field border. Accent is graphics only.
@@ -165,6 +164,12 @@ Motion is driven by data: if no beat arrives, nothing moves.
 3. After "Save key", make one authenticated read call to Intervals.icu to check the key and show "key rejected" on 401/403. Test it against a local server only: no live Intervals.icu calls from cloud sessions.
 4. The measurement controller exposes the latest accepted beat's timestamp (and every beat's during settling) so the hand can step per beat. No change to filtering or maths.
 5. An unreliable or too-short result offers "Repeat", which starts a new measurement with the same strap.
+
+**Changes after Paul's iPhone test (21 Oct 2026, these replace the text above where they differ):**
+
+1. Copy: never name other apps. "Close other apps that connect to your heart rate monitor." in the no-strap notice and the couldn't-connect warning.
+2. Copy: "sit still", never "lie still".
+3. No separate signal check phase. The RR-presence and plausibility checks run on the first 10 s of settling (or of the measurement when settling is 0 s) and abort with the same failure messages. The step indicator has three steps: settle, measure, upload; the strap row shows the connection. Poor contact before the check has passed holds the phase's clock, as before.
 
 **Key check endpoint (verified 21 Oct 2026 in the live OpenAPI spec):** `GET https://intervals.icu/api/v1/athlete/0/wellness/{today}` ("Get wellness record for date", local ISO-8601 day). It needs only the same wellness access as the upload and returns a small record: 2xx = key valid, 401/403 = key rejected, anything else = "couldn't check, saved anyway". (`GET /api/v1/athlete/{id}` also exists but returns the full athlete with sport settings.)
 

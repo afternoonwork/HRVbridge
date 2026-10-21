@@ -20,7 +20,8 @@ Recordings (real raw 0x2A37 captures, RawRecording JSON from the iOS app):
 writes <name>.expected.json next to every recording in
 core/src/test/resources/recordings/: all packets parsed, their RR values
 concatenated, then filter and metrics over the whole recording; plus the
-measurement window the app would use (check 10 s, settling 30 s, 60 s).
+measurement window the app would use (settling 30 s, its first 10 s also the
+signal check, then 60 s).
 """
 import json
 import math
@@ -268,12 +269,12 @@ def expected_for_recording(rec):
         rr.extend(m["rrMs"])
     acc, reasons = filt(rr)
     # What the app computes: MeasurementSession started at the recording's t = 0 with
-    # check 10 s, settling 30 s, measurement 60 s. A packet belongs to the measuring
-    # window if its arrival time is in [40 s, 100 s).
+    # settling 30 s (the signal check runs on its first 10 s) and measurement 60 s.
+    # A packet belongs to the measuring window if its arrival time is in [30 s, 90 s).
     session_rr = []
     for p in rec["packets"]:
         m = parse(p["hex"])
-        if m is not None and 40000 <= p["tMs"] < 100000:
+        if m is not None and 30000 <= p["tMs"] < 90000:
             session_rr.extend(m["rrMs"])
     s_acc, s_reasons = filt(session_rr)
     return {

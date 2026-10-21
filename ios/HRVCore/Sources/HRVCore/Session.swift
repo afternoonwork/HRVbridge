@@ -22,7 +22,7 @@ public enum SignalCheck {
 }
 
 public struct SessionConfig: Equatable, Sendable {
-    /// Signal check before the clock starts: RR present, contact, plausibility.
+    /// Signal check (RR present, contact, plausibility) over the first part of the first phase.
     public var checkMs: Int64 = 10_000
     /// Data discarded. User setting: 0, 30, 60 or 90 s.
     public var stabilisationMs: Int64 = 60_000
@@ -42,8 +42,6 @@ public enum FailReason: Equatable, Sendable {
 }
 
 public enum SessionState: Equatable, Sendable {
-    /// `elapsedMs` restarts whenever contact is lost and regained.
-    case checking(elapsedMs: Int64, poorContact: Bool)
     case stabilising(remainingMs: Int64, poorContact: Bool)
     case measuring(remainingMs: Int64, beats: Int, poorContact: Bool)
     /// `result` is nil when there was too little data to compute anything.
@@ -52,7 +50,7 @@ public enum SessionState: Equatable, Sendable {
 
     public var isActive: Bool {
         switch self {
-        case .checking, .stabilising, .measuring: return true
+        case .stabilising, .measuring: return true
         case .finished, .failed: return false
         }
     }
@@ -61,14 +59,21 @@ public enum SessionState: Equatable, Sendable {
 /// The measurement protocol as a state machine driven by caller timestamps (same as
 /// Android's MeasurementSession). Phase boundaries are exact, so results do not depend
 /// on tick frequency. The measuring window is [start, start + measurementMs).
+///
+/// No separate check phase (decided 21 Oct 2026): the signal check (RR present,
+/// plausible) runs on the first `checkMs` of the first phase, settling, or measuring
+/// when settling is 0 s. While contact is poor before the check has passed, that
+/// phase's clock does not run.
 public final class MeasurementSession {
-    private enum Phase { case checking, stabilising, measuring }
+    private enum Phase { case stabilising, measuring }
 
     private let config: SessionConfig
-    private var phase = Phase.checking
+    private var phase: Phase
     private var phaseStart: Int64
     private var now: Int64
     private var poorContact = false
+    /// The signal check has passed.
+    private var checked = false
     private var window: [HeartRateMeasurement] = []
     private var rr: [Double] = []
     private var terminal: SessionState?
@@ -76,6 +81,7 @@ public final class MeasurementSession {
 
     public init(config: SessionConfig = SessionConfig(), startMs: Int64) {
         self.config = config
+        phase = config.stabilisationMs > 0 ? .stabilising : .measuring
         phaseStart = startMs
         now = startMs
     }
@@ -83,7 +89,6 @@ public final class MeasurementSession {
     public var state: SessionState {
         if let t = terminal { return t }
         switch phase {
-        case .checking: return .checking(elapsedMs: now - phaseStart, poorContact: poorContact)
         case .stabilising: return .stabilising(remainingMs: phaseStart + config.stabilisationMs - now, poorContact: poorContact)
         case .measuring: return .measuring(remainingMs: phaseStart + config.measurementMs - now, beats: rr.count, poorContact: poorContact)
         }
@@ -99,22 +104,16 @@ public final class MeasurementSession {
         }
         let wasPoor = poorContact
         poorContact = m.poorContact
-        switch phase {
-        case .checking:
-            if m.poorContact {
+        if !checked {
+            // Poor contact before the check: start the first phase over once contact is good.
+            if m.poorContact || wasPoor {
                 window.removeAll()
+                rr.removeAll()
                 phaseStart = timeMs
-            } else if wasPoor {
-                window = [m]
-                phaseStart = timeMs
-            } else {
-                window.append(m)
             }
-        case .measuring:
-            rr.append(contentsOf: m.rrIntervalsMs)
-        case .stabilising:
-            break
+            if !m.poorContact { window.append(m) }
         }
+        if phase == .measuring && !(m.poorContact && !checked) { rr.append(contentsOf: m.rrIntervalsMs) }
     }
 
     public func onTick(_ timeMs: Int64) {
@@ -128,31 +127,34 @@ public final class MeasurementSession {
     private func advance(_ timeMs: Int64) {
         now = max(now, timeMs)
         while terminal == nil {
-            switch phase {
-            case .checking:
-                let end = phaseStart + config.checkMs
-                if poorContact || now < end { return }
+            if !checked {
+                if poorContact {
+                    phaseStart = now // the clock waits for good contact
+                    return
+                }
+                if now < phaseStart + min(config.checkMs, duration(phase)) { return }
                 switch SignalCheck.evaluate(window) {
-                case .ok: enter(.stabilising, at: end)
+                case .ok: checked = true
                 case .noData: terminal = .failed(.noData)
                 case .noRR: terminal = .failed(.noRR)
                 case .implausible: terminal = .failed(.implausible)
                 case .poorContact: return // unreachable: handled above
                 }
+                window.removeAll()
+                continue
+            }
+            let end = phaseStart + duration(phase)
+            if now < end { return }
+            switch phase {
             case .stabilising:
-                let end = phaseStart + config.stabilisationMs
-                if now < end { return }
-                enter(.measuring, at: end)
+                phase = .measuring
+                phaseStart = end
             case .measuring:
-                if now < phaseStart + config.measurementMs { return }
                 let series = ArtefactFilter.filter(rr, config: config.filter)
                 terminal = .finished(rrMs: series.rrMs, series: series, result: HrvMetrics.compute(series, gate: config.gate))
             }
         }
     }
 
-    private func enter(_ next: Phase, at ms: Int64) {
-        phase = next
-        phaseStart = ms
-    }
+    private func duration(_ p: Phase) -> Int64 { p == .stabilising ? config.stabilisationMs : config.measurementMs }
 }

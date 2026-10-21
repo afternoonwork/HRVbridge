@@ -181,11 +181,10 @@ struct StatusLine: View {
 // MARK: Step indicator
 
 enum MeasurementStep: Int, CaseIterable {
-    case check, settle, measure, upload
+    case settle, measure, upload
 
     var title: String {
         switch self {
-        case .check: return "check"
         case .settle: return "settle"
         case .measure: return "measure"
         case .upload: return "upload"
@@ -193,7 +192,7 @@ enum MeasurementStep: Int, CaseIterable {
     }
 }
 
-/// Four steps. Done: filled ink-2; current: filled ink (or accent, or hollow for a problem);
+/// Three steps (settle, measure, upload; the strap row shows the connection). Done: filled ink-2; current: filled ink (or accent, or hollow for a problem);
 /// later: hollow. The current label is bold, so steps never differ by colour alone.
 struct StepIndicator: View {
     enum CurrentMark { case ink, accent, hollow }
@@ -212,7 +211,7 @@ struct StepIndicator: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Step \(current.rawValue + 1) of 4: \(current.title)")
+        .accessibilityLabel("Step \(current.rawValue + 1) of 3: \(current.title)")
     }
 
     @ViewBuilder private func dot(_ step: MeasurementStep) -> some View {

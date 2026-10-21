@@ -399,7 +399,7 @@ final class MeasurementController {
 
     private func sameCase(_ a: SessionState?, _ b: SessionState?) -> Bool {
         switch (a, b) {
-        case (.checking?, .checking?), (.stabilising?, .stabilising?), (.measuring?, .measuring?),
+        case (.stabilising?, .stabilising?), (.measuring?, .measuring?),
              (.finished?, .finished?), (.failed?, .failed?): return true
         default: return false
         }

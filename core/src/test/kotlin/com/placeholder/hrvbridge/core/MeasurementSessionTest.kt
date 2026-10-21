@@ -19,19 +19,20 @@ class MeasurementSessionTest {
 
     @Test
     fun runsThroughAllPhasesWithDefaultTiming() {
+        // No separate check phase: settling starts at once, the check runs on its first 10 s.
         val s = MeasurementSession(SessionConfig(), startMs = 0)
-        assertEquals(SessionState.Checking(elapsedMs = 0, poorContact = false), s.state)
+        assertEquals(SessionState.Stabilising(remainingMs = 60_000, poorContact = false), s.state)
         val packets = SimulatedStream.fromRr(List(200) { 1000.0 })
         for (p in packets) {
             s.onPacket(p.bytes, p.timeMs)
             when (p.timeMs) {
-                5_000L -> assertEquals(SessionState.Checking(5_000, false), s.state)
-                40_000L -> assertEquals(SessionState.Stabilising(remainingMs = 30_000, poorContact = false), s.state)
-                100_000L -> assertEquals(SessionState.Measuring(remainingMs = 30_000, beats = 31, poorContact = false), s.state)
+                5_000L -> assertEquals(SessionState.Stabilising(55_000, false), s.state)
+                40_000L -> assertEquals(SessionState.Stabilising(remainingMs = 20_000, poorContact = false), s.state)
+                100_000L -> assertEquals(SessionState.Measuring(remainingMs = 20_000, beats = 41, poorContact = false), s.state)
             }
         }
         val done = assertIs<SessionState.Finished>(s.state)
-        // Measuring window is [70 s, 130 s): packets at 70..129 s carry one 1000 ms beat each.
+        // Measuring window is [60 s, 120 s): packets at 60..119 s carry one 1000 ms beat each.
         assertEquals(60, done.rrMs.size)
         assertEquals(60, done.result!!.restingHr)
     }
@@ -40,28 +41,49 @@ class MeasurementSessionTest {
     fun tickAloneEndsPhases() {
         val s = MeasurementSession(fast, startMs = 1_000)
         s.feed(SimulatedStream.fromRr(List(9) { 1000.0 }), offsetMs = 1_000)
+        // 0 s settling: the check runs on the first 10 s of the measurement itself.
         s.onTick(11_000)
-        assertEquals(SessionState.Measuring(60_000, 0, false), s.state)
-        s.onTick(71_000)
+        assertEquals(SessionState.Measuring(50_000, 9, false), s.state)
+        s.onTick(61_000)
         val done = assertIs<SessionState.Finished>(s.state)
-        assertNull(done.result)
+        // The 9 beats of the check window count; too few for a reliable result.
+        assertEquals(9, done.result!!.acceptedBeats)
+        assertTrue(!done.result!!.reliable)
     }
 
     @Test
-    fun poorContactRestartsTheCheckWindow() {
+    fun poorContactBeforeTheCheckHoldsTheClock() {
         val s = MeasurementSession(fast, startMs = 0)
         s.onPacket(beat(1000.0), 1_000)
         s.onPacket(beat(1000.0, contact = false), 8_000)
-        assertEquals(SessionState.Checking(0, poorContact = true), s.state)
+        assertEquals(SessionState.Measuring(60_000, 0, poorContact = true), s.state)
         s.onTick(12_000)
-        assertEquals(SessionState.Checking(4_000, poorContact = true), s.state)
-        // Good contact again: the 10 s check starts over from here.
+        assertEquals(SessionState.Measuring(60_000, 0, poorContact = true), s.state)
+        // Good contact again: the phase (and its 10 s check) starts over from here.
         s.onPacket(beat(1000.0), 13_000)
-        assertEquals(SessionState.Checking(0, poorContact = false), s.state)
+        assertEquals(SessionState.Measuring(60_000, 1, poorContact = false), s.state)
         for (t in 14_000L..22_000L step 1_000) s.onPacket(beat(1000.0), t)
-        assertIs<SessionState.Checking>(s.state)
         s.onPacket(beat(1000.0), 23_000)
-        assertIs<SessionState.Measuring>(s.state)
+        assertEquals(SessionState.Measuring(50_000, 11, false), s.state)
+    }
+
+    @Test
+    fun checkRunsOnTheFirstTenSecondsOfSettling() {
+        val s = MeasurementSession(SessionConfig(stabilisationMs = 30_000), startMs = 0)
+        for (t in 1_000L..9_000L step 1_000) s.onPacket(HeartRatePacketEncoder.encode(90, listOf(1024)), t)
+        assertEquals(SessionState.Stabilising(21_000, false), s.state)
+        s.onTick(10_000)
+        assertEquals(SessionState.Failed(FailReason.IMPLAUSIBLE), s.state)
+    }
+
+    @Test
+    fun poorContactAfterTheCheckOnlyFlags() {
+        val s = MeasurementSession(SessionConfig(stabilisationMs = 30_000), startMs = 0)
+        for (t in 1_000L..10_000L step 1_000) s.onPacket(beat(1000.0), t)
+        s.onPacket(beat(1000.0, contact = false), 12_000)
+        assertEquals(SessionState.Stabilising(18_000, poorContact = true), s.state)
+        s.onTick(30_000)
+        assertEquals(SessionState.Measuring(60_000, 0, poorContact = true), s.state)
     }
 
     @Test
@@ -100,7 +122,7 @@ class MeasurementSessionTest {
         val s = MeasurementSession(fast, startMs = 0)
         s.onPacket(byteArrayOf(0x10), 1_000)
         assertEquals(1, s.malformedPackets)
-        assertEquals(SessionState.Checking(1_000, false), s.state)
+        assertEquals(SessionState.Measuring(59_000, 0, false), s.state)
     }
 
     @Test
@@ -112,7 +134,8 @@ class MeasurementSessionTest {
             val rr = TestVectors.doubles(v["rrMs"])
             if (rr.size < 2 || rr.any { HeartRatePacketEncoder.msToRaw(it) * 1000.0 / 1024.0 != it }) continue
             val total = rr.sum().toLong()
-            val s = MeasurementSession(fast.copy(measurementMs = total + 1_000), startMs = 0)
+            // 10 s settling (holding the check), then the measurement from 10 s.
+            val s = MeasurementSession(fast.copy(stabilisationMs = 10_000, measurementMs = total + 1_000), startMs = 0)
             for (t in 500L..9_500L step 1_000) s.onPacket(beat(1000.0), t)
             var t = 10_000.0
             for (x in rr) {

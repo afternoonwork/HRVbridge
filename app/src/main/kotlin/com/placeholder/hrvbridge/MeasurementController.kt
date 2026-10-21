@@ -134,7 +134,7 @@ class MeasurementController @JvmOverloads constructor(
 
     val isActive: Boolean
         get() = connecting ||
-            session.let { it is SessionState.Checking || it is SessionState.Stabilising || it is SessionState.Measuring }
+            session.let { it is SessionState.Stabilising || it is SessionState.Measuring }
 
     private var logEpoch = SystemClock.elapsedRealtime()
     val log = DebugLog(clockMs = { SystemClock.elapsedRealtime() - logEpoch })
@@ -193,9 +193,6 @@ class MeasurementController @JvmOverloads constructor(
 
     /** The Bluetooth source while scanning, for picking a strap from the list. */
     val bleSource: BleHeartRateSource? get() = source as? BleHeartRateSource
-
-    /** Length of the signal check, for its countdown. */
-    val checkMs: Long get() = running.checkMs
 
     fun setSettling(seconds: Int) {
         require(seconds in SETTLING_CHOICES)
