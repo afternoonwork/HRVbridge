@@ -48,3 +48,31 @@ public enum SimulatorScenario: String, CaseIterable, Identifiable, Sendable {
         }
     }
 }
+
+/// Endless packet feed for the simulated strap: the scenario once, then its steady part
+/// looped (poor contact happens only at the very start), so the strap keeps sending for
+/// as long as it is connected, whenever the user starts the measurement.
+public struct SimulatorFeed {
+    private let first: [TimedPacket]
+    private let loop: [TimedPacket]
+    private var current: [TimedPacket]
+    private var index = 0
+    private var offset: Int64 = 0
+
+    public init(_ scenario: SimulatorScenario) {
+        first = scenario.packets()
+        loop = scenario == .poorContactAtStart ? SimulatorScenario.calm.packets() : first
+        current = first
+    }
+
+    public mutating func next() -> TimedPacket {
+        if index == current.count {
+            offset += current.last?.timeMs ?? 0
+            current = loop
+            index = 0
+        }
+        let p = current[index]
+        index += 1
+        return TimedPacket(timeMs: offset + p.timeMs, bytes: p.bytes)
+    }
+}
