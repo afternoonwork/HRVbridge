@@ -30,6 +30,10 @@ on:
         type: choice
         options: [both, light, dark]
         default: both
+      device:
+        description: "Simulator device type, e.g. iPhone-SE, iPhone-17, iPhone-17-Pro"
+        type: string
+        default: iPhone-SE
 
 jobs:
   build:
@@ -77,7 +81,7 @@ jobs:
           exit "${status:-0}"
 
       # Nobody can look at the UI from the cloud: screenshot states on an iPhone
-      # SE simulator (375 x 667), as an artifact. Slow (about 15 min for all), so
+      # SE simulator (375 x 667; manual runs can pick another device), as an artifact. Slow (about 15 min for all), so
       # opt-in: manual runs, or PRs labelled "screenshots". A PR body line
       # "snapshots: dial settling" limits the states; otherwise all are taken.
       - name: Screenshots (simulator)
@@ -87,6 +91,7 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           INPUT_STATES: ${{ inputs.states }}
           INPUT_APPEARANCES: ${{ inputs.appearances }}
+          SNAPSHOT_DEVICE: ${{ inputs.device || 'iPhone-SE' }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             states="$INPUT_STATES"

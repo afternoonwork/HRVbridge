@@ -1,6 +1,7 @@
 #!/bin/bash
 # Screenshots of every main screen state, the dial, connect and settings, in light
-# and dark, on an iPhone SE simulator (375 x 667 points). Debug builds only: the app
+# and dark, on an iPhone SE simulator (375 x 667 points) unless SNAPSHOT_DEVICE says
+# otherwise. Debug builds only: the app
 # shows one fixed state when launched with -uiSnapshot <name> (Snapshots.swift).
 #
 # Usage: scripts/ios-snapshots.sh <path to HRVBridge.app> <output dir>
@@ -8,6 +9,10 @@
 #   SNAPSHOT_STATES       space-separated state names from STATES below; empty or
 #                         "all" takes every state.
 #   SNAPSHOT_APPEARANCES  "light", "dark" or "light dark" (default).
+#   SNAPSHOT_DEVICE       simulator device type as in its identifier, e.g. "iPhone-17"
+#                         or "iPhone-17-Pro" (default "iPhone-SE"). A type whose
+#                         identifier ends with ".<value>" wins, else any containing
+#                         it; the last sorted is used.
 # Example: SNAPSHOT_STATES="dial settling" SNAPSHOT_APPEARANCES=light scripts/ios-snapshots.sh ...
 # In CI (.github/workflows/ios.yml) screenshots are opt-in: label a PR "screenshots"
 # (optionally with a line "snapshots: dial settling" in its body), or run the
@@ -41,10 +46,18 @@ RUNTIME=$(xcrun simctl list runtimes -j | python3 -c '
 import json, sys
 r = [x for x in json.load(sys.stdin)["runtimes"] if x["isAvailable"] and x["platform"] == "iOS"]
 print(r[-1]["identifier"])')
-TYPE=$(xcrun simctl list devicetypes -j | python3 -c '
+# Only types the runtime supports: plain "iPhone-SE" (1st generation) is listed but
+# does not run on current iOS, so the default falls through to the newest SE.
+TYPE=$(xcrun simctl list runtimes -j | python3 -c '
 import json, sys
-t = [x["identifier"] for x in json.load(sys.stdin)["devicetypes"] if "iPhone-SE" in x["identifier"]]
-print(sorted(t)[-1])')
+want, runtime = sys.argv[1], sys.argv[2]
+r = [x for x in json.load(sys.stdin)["runtimes"] if x["identifier"] == runtime][0]
+ids = [x["identifier"] for x in r["supportedDeviceTypes"]]
+t = [i for i in ids if i.endswith("." + want)] or [i for i in ids if want in i]
+if not t:
+    sys.exit("No simulator device type matches %r. Available iPhone device types:\n  %s"
+             % (want, "\n  ".join(sorted(i for i in ids if "iPhone" in i))))
+print(sorted(t)[-1])' "${SNAPSHOT_DEVICE:-iPhone-SE}" "$RUNTIME")
 echo "Runtime $RUNTIME, device type $TYPE"
 DEVICE=$(xcrun simctl create hrv-snapshots "$TYPE" "$RUNTIME")
 trap 'xcrun simctl shutdown "$DEVICE" || true; xcrun simctl delete "$DEVICE" || true' EXIT
