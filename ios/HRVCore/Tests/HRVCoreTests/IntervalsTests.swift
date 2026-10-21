@@ -58,4 +58,22 @@ final class IntervalsTests: XCTestCase {
         XCTAssertEqual(ApiResult(statusCode: 403, body: ""), .unauthorised(code: 403))
         XCTAssertEqual(ApiResult(statusCode: 500, body: "boom"), .httpError(code: 500, body: "boom"))
     }
+
+    func testKeyCheckRequest() {
+        let spec = Intervals.getWellness(day, apiKey: ApiKey(userInput: "abc123")!, base: "http://127.0.0.1:1")
+        XCTAssertEqual(spec.method, "GET")
+        XCTAssertEqual(spec.url, "http://127.0.0.1:1/api/v1/athlete/0/wellness/2026-10-20")
+        XCTAssertEqual(spec.headers["Authorization"], "Basic QVBJX0tFWTphYmMxMjM=")
+        XCTAssertNil(spec.headers["Content-Type"])
+        XCTAssertTrue(spec.body.isEmpty)
+    }
+
+    func testKeyCheckOutcome() {
+        XCTAssertEqual(KeyCheck(ApiResult(statusCode: 200, body: "{}")), .valid)
+        XCTAssertEqual(KeyCheck(ApiResult(statusCode: 401, body: "")), .rejected)
+        XCTAssertEqual(KeyCheck(ApiResult(statusCode: 403, body: "")), .rejected)
+        XCTAssertEqual(KeyCheck(ApiResult(statusCode: 404, body: "")), .unknown)
+        XCTAssertEqual(KeyCheck(ApiResult(statusCode: 500, body: "")), .unknown)
+        XCTAssertEqual(KeyCheck(.networkError(message: "offline")), .unknown)
+    }
 }

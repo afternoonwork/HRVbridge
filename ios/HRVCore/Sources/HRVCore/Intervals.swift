@@ -114,6 +114,23 @@ public enum ApiResult: Equatable, Sendable {
     }
 }
 
+/// Outcome of the key check after "Save key" (GET today's wellness record).
+public enum KeyCheck: Equatable, Sendable {
+    case valid
+    /// 401/403: Intervals.icu did not accept the key.
+    case rejected
+    /// Anything else (offline, server error): the key is kept, unchecked.
+    case unknown
+
+    public init(_ result: ApiResult) {
+        switch result {
+        case .success: self = .valid
+        case .unauthorised: self = .rejected
+        case .httpError, .networkError: self = .unknown
+        }
+    }
+}
+
 /// Intervals.icu wellness API request building. Athlete id 0 means the key's athlete.
 public enum Intervals {
     public static let baseURL = "https://intervals.icu"
@@ -145,6 +162,13 @@ public enum Intervals {
 
     public static func putWellnessBulk(_ values: [WellnessValues], apiKey: ApiKey, base: String = baseURL) -> HTTPRequestSpec {
         request("PUT", wellnessBulkURL(base: base), apiKey, bulkBody(values))
+    }
+
+    /// Key check: reads one wellness record, needs the same access as the upload.
+    public static func getWellness(_ date: LocalDate, apiKey: ApiKey, base: String = baseURL) -> HTTPRequestSpec {
+        HTTPRequestSpec(method: "GET", url: wellnessURL(date, base: base),
+                        headers: ["Authorization": apiKey.authorizationHeader, "Accept": "application/json"],
+                        body: Data())
     }
 
     private static func request(_ method: String, _ url: String, _ key: ApiKey, _ body: String) -> HTTPRequestSpec {
