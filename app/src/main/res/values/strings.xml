@@ -88,7 +88,7 @@
     <!-- Morning questions (optional). Labels are Intervals.icu's own, 1 = best. -->
     <string name="questions_title">Morning questions</string>
     <string name="questions_switch">Morning questions</string>
-    <string name="questions_footer">After each measurement, answer optional questions on soreness, fatigue, motivation, injury and sickness. They are uploaded with your values.</string>
+    <string name="questions_footer"><![CDATA[After each measurement, answer optional questions on <b>soreness</b>, <b>fatigue</b>, <b>motivation</b>, <b>injury</b> and <b>sickness</b>. They are uploaded with your values.]]></string>
     <string name="q_soreness">Soreness</string>
     <string name="q_fatigue">Fatigue</string>
     <string name="q_motivation">Motivation</string>
