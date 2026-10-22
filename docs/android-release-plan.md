@@ -28,7 +28,7 @@ for users are in `README.md`.
 | B1 | Release workflow pushed | Paul | The gh token lacks the `workflow` scope, so the workflow commit of PR #42 could not be pushed. Fix: `gh auth refresh -h github.com -s workflow`, then push the branch. |
 | B2 | Signing key and four GitHub secrets | Paul | Without them the release workflow fails on purpose (no unsigned releases). Steps in section 2. |
 | B3 | Launcher icon | Agent (PR #41), Paul approves | Without it the app shows the default Android icon. |
-| B4 | Privacy policy final text | Done (docs/contact PR) | `docs/privacy-policy.md` is final: effective date 21 October 2026, contact Paul Müller, signon(at)paulmuller.fyi, URL of the file on GitHub. The README links to it; the repo copy is enough as the URL, no separate hosting needed for the APK route. |
+| B4 | Privacy policy final text | Done (docs/contact PR) | `docs/privacy-policy.md` is final: effective date 21 October 2026, contact Paul Müller, pm(at)afternoon.work, URL of the file on GitHub. The README links to it; the repo copy is enough as the URL, no separate hosting needed for the APK route. |
 | B5 | First real test on an Android phone with a strap | Paul finds a tester | BLE and the Keystore have never run on a device. Until then every release is a beta and its first users are the testers. |
 
 Not blockers (checked):

@@ -51,7 +51,7 @@ policy apply to them.
 The app can create a debug log (Bluetooth events, received data, results)
 to help find problems. It is only shared if you tap "Share debug log", and
 only with the recipient you choose. It never contains your API key. If you
-send a debug log to the developer by email (signon(at)paulmuller.fyi) to report a
+send a debug log to the developer by email (pm(at)afternoon.work) to report a
 problem, it is used only to fix that problem and deleted afterwards.
 
 ## Permissions
@@ -93,4 +93,4 @@ new effective date.
 
 ## Contact
 
-Paul Müller, signon(at)paulmuller.fyi
+Paul Müller, pm(at)afternoon.work
