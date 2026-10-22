@@ -64,7 +64,7 @@ class DialSizeTest {
             MainScreenState(MainPhase.Settling(41, true), heartRate = 55, handAngle = 115.0),
             MainScreenState(MainPhase.Measuring(30, 25, true), heartRate = 55, handAngle = 540.0),
         ).map(::dialBounds)
-        running.forEach { assertEquals(running[0], it) }
+        assertEquals(List(running.size) { running[0] }, running)
         val dp = running[0].width / activity.resources.displayMetrics.density
         assertTrue("dial $dp dp", dp >= minDp)
         for (upload in listOf(ResultSummary.Upload.NONE, ResultSummary.Upload.UPLOADED)) {
