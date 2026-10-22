@@ -18,7 +18,7 @@ SignON is not a medical device.
 Android 8.0 or newer, with Bluetooth.
 
 1. Open the latest release under
-   [Releases](https://github.com/mularmularmular/HRVbridge/releases) and
+   [Releases](https://github.com/afternoonwork/HRVbridge/releases) and
    download `SignON-<version>.apk` and `SignON-<version>.apk.sha256`.
 2. Optional but recommended, on a computer: check the file.
    - SHA-256 of the APK must match the `.sha256` file and the release
