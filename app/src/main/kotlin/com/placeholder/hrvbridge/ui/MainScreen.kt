@@ -39,7 +39,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -416,14 +418,22 @@ private fun StrapList(found: List<FoundStrap>, choose: (String) -> Unit) {
 @Composable
 private fun Readout(state: MainScreenState, mark: StatusMark?, label: String, seconds: Int, detail: String, poor: Boolean) {
     if (poor) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // No box: the warning takes the place of the timer and detail, so this is no taller than the
+        // normal readout and the reserved space (and so the dial) stays small enough for short phones.
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.semantics(mergeDescendants = true) {}) {
                 mark?.let { StatusDot(it) }
                 Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = hrv.ink)
                 Text(stringResource(R.string.seconds, seconds), style = MaterialTheme.typography.bodyMedium, color = hrv.ink)
             }
-            state.warning?.let { Notice(it.resolve(), warning = true) }
+            state.warning?.let {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
+                    WarningIcon(hrv.ink)
+                    Text(it.resolve(), style = MaterialTheme.typography.bodyMedium, color = hrv.ink)
+                }
+            }
         }
     } else {
         Column(
