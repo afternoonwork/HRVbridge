@@ -89,16 +89,16 @@ class DialSizeTest {
         check(230f)
     }
 
-    /** Larger phones: the dial grows with the width (80%, at least 70%). */
+    /** Larger phones: the dial grows with the width (86%, at least 80%). */
     @Test
     @Config(qualifiers = "w411dp-h891dp-xxhdpi")
     fun dialGrowsOnAMediumPhone() {
-        check(0.7f * widthDp)
+        check(0.8f * widthDp)
     }
 
     @Test
     @Config(qualifiers = "w448dp-h998dp-xxhdpi")
     fun dialGrowsOnALargePhone() {
-        check(0.7f * widthDp)
+        check(0.8f * widthDp)
     }
 }

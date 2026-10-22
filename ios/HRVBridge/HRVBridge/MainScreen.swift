@@ -238,50 +238,49 @@ struct MainScreenView: View {
 
     private var dialLayout: some View {
         GeometryReader { geo in
-            let running = topHeight + Space.dialToReadout - 12 + belowProbe + keysProbe + 12 + Space.bottom
-            let current = topHeight + belowSpacing + belowHeight + keysHeight
-            // Active states (poor contact included) keep the reserved size; only terminal states may shrink it.
+            // Three zones: the step indicator under the title; the dial in the middle; the status
+            // (readout, warnings, result) grouped with the keys at the bottom.
+            let topZone = Space.titleToSteps + max(28, stepHeight, topHeight)
+            let bottomZone = { (status: CGFloat, keys: CGFloat) in status + keys + Space.statusToKeys + Space.bottom }
+            // Active states (poor contact included) reserve the tallest readout and the Start key, so
+            // the dial keeps one size and place; only other states may shrink it, never grow it.
             let active: Bool = {
                 if case .connected = state.phase { return true }
                 return state.isMeasuring
             }()
-            let avail = geo.size.height - 8 - Space.stepsToDial - 8
-            let fit = max(160, min(HeartDial.size(forWidth: geo.size.width), avail - running))
-            // Spare height, from the reserved heights so the dial does not move between active
-            // states: 2/3 above the block, 1/3 between the block and the keys (keeps that gap
-            // small on tall phones).
-            let lift = max(0, avail - running - fit) * 2 / 3
-            let dialSize = active ? fit : max(160, min(fit, avail - current))
-            // Terminal states keep the dial where it was while their content fits below it.
-            let topLift = active ? lift : max(0, min(lift, avail - current - dialSize))
+            let middle = geo.size.height - topZone - bottomZone(belowProbe, keysProbe)
+            let fit = max(160, min(HeartDial.size(forWidth: geo.size.width), middle - 2 * Space.dialMargin))
+            // Optical centre: 40% of the spare middle height above the dial, 60% below.
+            let above = max(0, middle - fit) * 0.4
+            let middleNow = geo.size.height - topZone - bottomZone(max(belowHeight, active ? belowProbe : 0), keysHeight)
+            let dialSize = active ? fit : max(160, min(fit, middleNow - Space.dialMargin))
+            // Other states keep the dial where it was while their content fits below it.
+            let dialTop = active ? above : max(0, min(above, middleNow - dialSize - Space.dialMargin / 2))
             ScrollView {
                 VStack(spacing: 0) {
                     top
                         .frame(minHeight: max(28, stepHeight))
                         .onGeometryChange(for: CGFloat.self, of: \.size.height) { topHeight = $0 }
-                        .padding(.top, 8 + topLift)
-                        .animation(animateDial ? .easeInOut(duration: 0.25) : nil, value: topLift)
+                        .padding(.top, Space.titleToSteps)
                     dial
                         .frame(width: dialSize, height: dialSize)
                         .animation(animateDial ? .easeInOut(duration: 0.25) : nil, value: dialSize)
-                        .padding(.top, Space.stepsToDial)
+                        .padding(.top, dialTop)
+                        .animation(animateDial ? .easeInOut(duration: 0.25) : nil, value: dialTop)
+                    Spacer(minLength: 0)
                     below
                         .onGeometryChange(for: CGFloat.self, of: \.size.height) { belowHeight = $0 }
-                        .padding(.top, belowSpacing)
+                        .frame(minHeight: active ? belowProbe : 0, alignment: .bottom)
+                    keys
+                        .onGeometryChange(for: CGFloat.self, of: \.size.height) { keysHeight = $0 }
+                        .padding(.top, Space.statusToKeys)
+                        .padding(.bottom, Space.bottom)
                 }
                 .padding(.horizontal, Space.margin)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: geo.size.height)
             }
             .scrollBounceBehavior(.basedOnSize)
             .background(alignment: .top) { probes }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                keys
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 12)
-                    .padding(.bottom, Space.bottom)
-                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { keysHeight = $0 }
-                    .background(Theme.bg)
-            }
         }
         .background(Theme.bg.ignoresSafeArea())
         .task {
@@ -322,13 +321,6 @@ struct MainScreenView: View {
             }
         } else {
             HeartDial(model: state.dial, accessibilityText: label)
-        }
-    }
-
-    private var belowSpacing: CGFloat {
-        switch state.phase {
-        case .result, .notEnoughBeats: return Space.dialToMetrics
-        default: return Space.dialToReadout - 12
         }
     }
 

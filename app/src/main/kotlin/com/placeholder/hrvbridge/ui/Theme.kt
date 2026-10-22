@@ -56,10 +56,11 @@ object Readout {
 
 object Space {
     val margin = 24.dp
-    val dialToReadout = 36.dp
-    val dialToMetrics = 32.dp
-    val stepsToDial = 12.dp
     val bottom = 28.dp
+    /** Main screen zones: title to step indicator, least space around the dial, status to keys. */
+    val titleToSteps = 16.dp
+    val dialMargin = 16.dp
+    val statusToKeys = 16.dp
 }
 
 private val HrvTypography = Typography().let { t ->

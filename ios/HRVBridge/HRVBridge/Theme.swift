@@ -40,10 +40,11 @@ extension Font {
 
 enum Space {
     static let margin: CGFloat = 24
-    static let dialToReadout: CGFloat = 36
-    static let dialToMetrics: CGFloat = 32
-    static let stepsToDial: CGFloat = 12
     static let bottom: CGFloat = 28
+    /// Main screen zones: title to step indicator, least space around the dial, status to keys.
+    static let titleToSteps: CGFloat = 16
+    static let dialMargin: CGFloat = 16
+    static let statusToKeys: CGFloat = 16
 }
 
 // MARK: Keys

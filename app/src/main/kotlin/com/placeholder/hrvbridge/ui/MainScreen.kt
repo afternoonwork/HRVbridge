@@ -293,37 +293,39 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         val keysProbe = height("keysProbe", full) { Keys(state.copy(phase = MainPhase.Connected("")), actions) }
         val below = height("below", inner) { Below(state, actions) }
         val keys = height("keys", full) { Keys(state, actions) }
-        val terminal = state.phase is MainPhase.Result || state.phase == MainPhase.NotEnoughBeats
-        val gap = if (terminal) Space.dialToMetrics else Space.dialToReadout - 12.dp
-        val pads = 8.dp + Space.stepsToDial + 16.dp + 12.dp + Space.bottom
+        // Three zones: the step indicator under the title; the dial in the middle; the status
+        // (readout, warnings, result) grouped with the keys at the bottom.
         val maxHeight = c.maxHeight.toDp()
-        val running = (top + belowProbe + keysProbe).toDp() + pads + Space.dialToReadout - 12.dp
-        val current = (top + below + keys).toDp() + pads + gap
-        // Active states (poor contact included) keep the reserved size; only terminal states may shrink it.
+        val topZone = Space.titleToSteps + top.toDp()
+        val bottomZone = { status: Int, k: Int -> (status + k).toDp() + Space.statusToKeys + Space.bottom }
+        // Active states (poor contact included) reserve the tallest readout and the Start key, so
+        // the dial keeps one size and place; only other states may shrink it, never grow it.
         val active = state.phase is MainPhase.Connected || state.isMeasuring
-        val fit = maxOf(160.dp, minOf(dialSize(c.maxWidth.toDp()), maxHeight - running))
-        // Spare height, from the reserved heights so the dial does not move between active states:
-        // 2/3 above the block, 1/3 between the block and the keys (keeps that gap small on tall phones).
-        val lift = maxOf(0.dp, maxHeight - running - fit) * 2 / 3
-        val target = if (active) fit else maxOf(160.dp, minOf(fit, maxHeight - current))
-        // Terminal states keep the dial where it was while their content fits below it.
-        val topLift = if (active) lift else maxOf(0.dp, minOf(lift, maxHeight - current - target))
+        val middle = maxHeight - topZone - bottomZone(belowProbe, keysProbe)
+        val fit = maxOf(160.dp, minOf(dialSize(c.maxWidth.toDp()), middle - Space.dialMargin * 2))
+        // Optical centre: 40% of the spare middle height above the dial, 60% below.
+        val above = maxOf(0.dp, middle - fit) * 0.4f
+        val middleNow = maxHeight - topZone - bottomZone(maxOf(below, if (active) belowProbe else 0), keys)
+        val target = if (active) fit else maxOf(160.dp, minOf(fit, middleNow - Space.dialMargin))
+        // Other states keep the dial where it was while their content fits below it.
+        val dialTop = if (active) above else maxOf(0.dp, minOf(above, middleNow - target - Space.dialMargin / 2))
         val minTop = maxOf(28.dp, step.toDp())
+        val statusMin = if (active) belowProbe.toDp() else 0.dp
         val screen = subcompose("screen") {
             val size by animateDpAsState(target, tween(250), label = "dialSize")
-            Column(Modifier.fillMaxSize()) {
-                Column(
-                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = Space.margin),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Box(Modifier.padding(top = 8.dp + topLift).heightIn(min = minTop), contentAlignment = Alignment.Center) {
-                        Top(state)
-                    }
-                    HeartDial(liveState.dial, size, Modifier.padding(top = Space.stepsToDial), pulse = state.pulse,
-                              description = dialDescription)
-                    Box(Modifier.padding(top = gap, bottom = 16.dp)) { Below(state, actions) }
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+                    .padding(horizontal = Space.margin),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(Modifier.padding(top = Space.titleToSteps).heightIn(min = minTop), contentAlignment = Alignment.Center) {
+                    Top(state)
                 }
-                Box(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = Space.bottom), contentAlignment = Alignment.Center) {
+                HeartDial(liveState.dial, size, Modifier.padding(top = dialTop), pulse = state.pulse,
+                          description = dialDescription)
+                Spacer(Modifier.weight(1f))
+                Box(Modifier.heightIn(min = statusMin), contentAlignment = Alignment.BottomCenter) { Below(state, actions) }
+                Box(Modifier.padding(top = Space.statusToKeys, bottom = Space.bottom), contentAlignment = Alignment.Center) {
                     Keys(state, actions)
                 }
             }
