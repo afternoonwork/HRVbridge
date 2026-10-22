@@ -41,7 +41,7 @@ The Android app is a beta and has not yet run on any Android phone:
 Bluetooth and the secure storage of your API key have only been tested in
 simulation. So the first users are its testers. If connecting or measuring
 fails, open Settings in the app, tap Debug log, then Share, and send it by
-email to signon(at)paulmuller.fyi. The log contains your heart data for that session
+email to pm(at)afternoon.work. The log contains your heart data for that session
 (but never your API key), so please do not post it in a public GitHub
 issue.
 
@@ -51,7 +51,7 @@ Coming later.
 
 ## Contact
 
-signon(at)paulmuller.fyi
+pm(at)afternoon.work
 
 ## Privacy
 
