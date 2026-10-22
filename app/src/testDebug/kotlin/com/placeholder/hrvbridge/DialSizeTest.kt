@@ -12,6 +12,8 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.toSize
 import com.placeholder.hrvbridge.ui.HrvTheme
 import com.placeholder.hrvbridge.ui.LocalStillSpinners
 import com.placeholder.hrvbridge.ui.MainActions
@@ -32,7 +34,8 @@ import org.robolectric.annotation.Config
 
 /** The dial keeps one size and place from Connected through measuring, also with poor contact; the result never grows it. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36], qualifiers = "w360dp-h640dp-xhdpi")
+// Usable heights of real phones: screen minus status bar (24 dp) and navigation bar (48 dp).
+@Config(sdk = [36], qualifiers = "w360dp-h568dp-xhdpi")
 class DialSizeTest {
     private val activity by lazy { Robolectric.buildActivity(ComponentActivity::class.java).setup().get() }
 
@@ -51,6 +54,13 @@ class DialSizeTest {
         shadowOf(Looper.getMainLooper()).idle()
         fun all(n: SemanticsNode): List<SemanticsNode> = listOf(n) + n.children.flatMap(::all)
         val root = (view.getChildAt(0) as ViewRootForTest).semanticsOwner.unmergedRootSemanticsNode
+        // Nothing (status, keys) clipped or off screen; unclipped, since boundsInRoot is clipped by the scroll.
+        for (n in all(root).filter { it.config.getOrNull(SemanticsProperties.Text) != null }) {
+            val c = n.layoutInfo.coordinates
+            val b = Rect(c.positionInRoot(), c.size.toSize())
+            assertTrue("${n.config.getOrNull(SemanticsProperties.Text)} at $b, screen ${root.boundsInRoot}",
+                       b.top >= 0f && b.bottom <= root.boundsInRoot.bottom)
+        }
         return all(root).single { it.config.getOrNull(SemanticsProperties.ContentDescription) == listOf("dial") }.boundsInRoot
     }
 
@@ -76,28 +86,22 @@ class DialSizeTest {
 
     private val widthDp get() = activity.resources.configuration.screenWidthDp
 
-    /** Robolectric has no system bars. At 360 x 640 the dial is at least its old size (248 dp). */
+    /** A small phone (360 x 640 minus the bars): the dial is height bound. */
     @Test
-    fun dialKeepsItsSizeFromConnectedThroughMeasuring() {
-        check(248f)
-    }
-
-    /** As on the emulator: 640 dp minus the status bar (24) and the navigation bar (48), so height bound. */
-    @Test
-    @Config(qualifiers = "w360dp-h568dp-xhdpi")
     fun dialKeepsItsSizeWhenHeightBound() {
-        check(230f)
+        val dp = check(230f)
+        assertTrue("dial $dp dp is height bound", dp < 0.86f * widthDp)
     }
 
     /** Larger phones: the dial grows with the width (86%, at least 80%). */
     @Test
-    @Config(qualifiers = "w411dp-h891dp-xxhdpi")
+    @Config(qualifiers = "w411dp-h819dp-xxhdpi")
     fun dialGrowsOnAMediumPhone() {
         check(0.8f * widthDp)
     }
 
     @Test
-    @Config(qualifiers = "w448dp-h998dp-xxhdpi")
+    @Config(qualifiers = "w448dp-h926dp-xxhdpi")
     fun dialGrowsOnALargePhone() {
         check(0.8f * widthDp)
     }

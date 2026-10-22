@@ -112,7 +112,7 @@ class ScreenshotTest {
         }
     }
 
-    /** Three phone sizes: the dial keeps its size and place from Connected through measuring. */
+    /** Three phone sizes (usable height, without status and navigation bars): the dial keeps its size and place from Connected through measuring. */
     private fun sizes(tag: String) {
         for (name in listOf("connected", "settling", "poor-contact", "measuring", "result")) {
             render("$name-$tag-light", false) { MainScreen(states.getValue(name)) }
@@ -120,16 +120,16 @@ class ScreenshotTest {
     }
 
     @Test
-    @Config(qualifiers = "w360dp-h640dp-xhdpi")
-    fun smallScreen() = sizes("360x640")
+    @Config(qualifiers = "w360dp-h568dp-xhdpi")
+    fun smallScreen() = sizes("360x568")
 
     @Test
-    @Config(qualifiers = "w411dp-h891dp-xxhdpi")
-    fun mediumScreen() = sizes("411x891")
+    @Config(qualifiers = "w411dp-h819dp-xxhdpi")
+    fun mediumScreen() = sizes("411x819")
 
     @Test
-    @Config(qualifiers = "w448dp-h998dp-xxhdpi")
-    fun largeScreen() = sizes("448x998")
+    @Config(qualifiers = "w448dp-h926dp-xxhdpi")
+    fun largeScreen() = sizes("448x926")
 
     @Composable
     private fun MainScreen(state: MainScreenState) {

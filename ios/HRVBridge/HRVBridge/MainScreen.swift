@@ -422,7 +422,9 @@ struct MainScreenView: View {
     @ViewBuilder private func readout(mark: StatusMark?, label: String, seconds: Int, detail: String,
                                       poor: Bool) -> some View {
         if poor {
-            VStack(spacing: 12) {
+            // No box: the warning takes the place of the timer and detail, so this is no taller than
+            // the normal readout and the reserved space (and so the dial) stays small enough for short phones.
+            VStack(spacing: 8) {
                 HStack(spacing: 6) {
                     if let mark { StatusDot(mark: mark) }
                     Text(label).font(.subheadline.weight(.semibold))
@@ -430,7 +432,15 @@ struct MainScreenView: View {
                 }
                 .foregroundStyle(Theme.ink)
                 .accessibilityElement(children: .combine)
-                if let w = state.warning { Notice(text: w, warning: true) }
+                if let w = state.warning {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle").font(.subheadline.weight(.semibold))
+                        Text(w).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .foregroundStyle(Theme.ink)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Warning. " + w)
+                }
             }
         } else {
             VStack(spacing: 4) {
