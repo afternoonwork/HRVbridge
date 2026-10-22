@@ -92,8 +92,8 @@ data class DialModel(
 /** Orange window only while it shows a heart rate or label and the dial is not faint (as on iOS). */
 internal fun DialModel.windowFilled(): Boolean = !faint && (label != null || heartRate != null)
 
-/** Dial size: min(264, width - 112) dp. */
-fun dialSize(screenWidth: Dp): Dp = minOf(264.dp, screenWidth - 112.dp)
+/** Dial size before the height limit: 86% of the screen width, so it grows with the phone. */
+fun dialSize(screenWidth: Dp): Dp = screenWidth * 0.86f
 
 /** "Remove animations" in the system settings. */
 @Composable

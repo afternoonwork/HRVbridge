@@ -60,6 +60,8 @@ android {
         unitTests.all {
             // Robolectric on JDK 17+ with SDK 36 reads FileDescriptor internals.
             it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED")
+            // Assertion messages (expected and actual values) in the CI log.
+            it.testLogging.exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         }
     }
 

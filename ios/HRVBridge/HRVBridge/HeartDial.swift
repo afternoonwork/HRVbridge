@@ -31,7 +31,7 @@ struct DialModel: Equatable {
     }
 }
 
-/// The heart rate dial, drawn in code. Size: min(264, width - 112).
+/// The heart rate dial, drawn in code. Size: 86% of the width, unless the height limits it.
 struct HeartDial: View {
     let model: DialModel
     var accessibilityText: String = ""
@@ -62,7 +62,7 @@ struct HeartDial: View {
     }
 
     static func size(forWidth width: CGFloat) -> CGFloat {
-        min(264, width - 112)
+        width * 0.86
     }
 
     private func face(_ r: CGFloat) -> some View {

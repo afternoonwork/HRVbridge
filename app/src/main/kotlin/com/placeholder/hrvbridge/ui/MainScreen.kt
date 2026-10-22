@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,21 +23,16 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -267,19 +261,6 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         QuestionsPage(submit = actions.submitAnswers, modifier = modifier)
         return
     }
-    // Measured heights of everything but the dial, so the dial can shrink to keep
-    // warnings and keys visible on small screens.
-    var topHeight by remember { mutableIntStateOf(0) }
-    var belowHeight by remember { mutableIntStateOf(0) }
-    var keysHeight by remember { mutableIntStateOf(0) }
-    // Heights of the step indicator, the tallest settling or measuring readout (also with poor
-    // contact), and the Start key, measured without placing them, so the dial keeps one size
-    // from Connected through measuring. Terminal states only shrink it if they would not fit.
-    var stepHeight by remember { mutableIntStateOf(0) }
-    var belowProbe by remember { mutableIntStateOf(0) }
-    var keysProbe by remember { mutableIntStateOf(0) }
-    val measured = remember { BooleanArray(1) }
-    val density = LocalDensity.current
     // While measuring the hand sweeps smoothly with the clock, every frame, also with
     // Remove animations (that scales animations, not the frame clock).
     var liveAngle by remember { mutableDoubleStateOf(state.handAngle) }
@@ -291,69 +272,66 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         }
     }
     val liveState = if (state.handClock != null) state.copy(handAngle = liveAngle) else state
-    BoxWithConstraints(modifier.fillMaxSize().background(hrv.bg)) {
-        val gap = if (state.phase is MainPhase.Result || state.phase == MainPhase.NotEnoughBeats) {
-            Space.dialToMetrics
-        } else {
-            Space.dialToReadout - 12.dp
+    // One layout pass: first the heights of everything but the dial, measured without placing
+    // them, then the screen with the dial sized and placed from them.
+    SubcomposeLayout(modifier.fillMaxSize().background(hrv.bg)) { c ->
+        val inner = Constraints(maxWidth = (c.maxWidth - (Space.margin * 2).roundToPx()).coerceAtLeast(0))
+        val full = Constraints(maxWidth = c.maxWidth)
+        fun height(slot: String, cs: Constraints, content: @Composable () -> Unit) =
+            subcompose(slot) { Box(Modifier.clearAndSetSemantics {}) { content() } }.maxOfOrNull { it.measure(cs).height } ?: 0
+        // The step indicator, the tallest settling or measuring readout (also with poor contact)
+        // and the Start key are reserved, so the dial keeps one size and place from Connected
+        // through measuring. Terminal states only shrink it if they would not fit.
+        val step = height("step", inner) { StepIndicator(Step.SETTLE) }
+        val top = maxOf(28.dp.roundToPx(), step, height("top", inner) { Top(state) })
+        val belowProbe = height("belowProbe", inner) {
+            Below(state.copy(phase = MainPhase.Settling(60, false)), actions)
+            Below(state.copy(phase = MainPhase.Measuring(60, 60, false)), actions)
+            Below(state.copy(phase = MainPhase.Settling(60, true)), actions)
+            Below(state.copy(phase = MainPhase.Measuring(60, 60, true)), actions)
         }
-        val fixed = 8.dp + Space.stepsToDial
-        val running = with(density) {
-            (topHeight + belowProbe + 16.dp.roundToPx() + keysProbe + (12.dp + Space.bottom).roundToPx()).toDp()
-        } + fixed + Space.dialToReadout - 12.dp
-        val current = with(density) { (topHeight + belowHeight + keysHeight).toDp() } + fixed + gap
-        // Active states (poor contact included) keep the reserved size; only terminal states may shrink it.
+        val keysProbe = height("keysProbe", full) { Keys(state.copy(phase = MainPhase.Connected("")), actions) }
+        val below = height("below", inner) { Below(state, actions) }
+        val keys = height("keys", full) { Keys(state, actions) }
+        // Three zones: the step indicator under the title; the dial in the middle; the status
+        // (readout, warnings, result) grouped with the keys at the bottom.
+        val maxHeight = c.maxHeight.toDp()
+        val topZone = Space.titleToSteps + top.toDp()
+        val bottomZone = { status: Int, k: Int -> (status + k).toDp() + Space.statusToKeys + Space.bottom }
+        // Active states (poor contact included) reserve the tallest readout and the Start key, so
+        // the dial keeps one size and place; only other states may shrink it, never grow it.
         val active = state.phase is MainPhase.Connected || state.isMeasuring
-        val target = maxOf(160.dp, minOf(dialSize(maxWidth), maxHeight - if (active) running else maxOf(running, current)))
-        // Snap until the first measured layout, so opening the screen does not animate.
-        val size by animateDpAsState(target, if (measured[0]) tween(250) else snap(), label = "dialSize")
-        val ready = topHeight > 0 && belowProbe > 0 && keysProbe > 0
-        SideEffect { measured[0] = ready }
-        Column(Modifier.fillMaxSize()) {
+        val middle = maxHeight - topZone - bottomZone(belowProbe, keysProbe)
+        val fit = maxOf(160.dp, minOf(dialSize(c.maxWidth.toDp()), middle - Space.dialMargin * 2))
+        // Optical centre: 40% of the spare middle height above the dial, 60% below.
+        val above = maxOf(0.dp, middle - fit) * 0.4f
+        val middleNow = maxHeight - topZone - bottomZone(maxOf(below, if (active) belowProbe else 0), keys)
+        val target = if (active) fit else maxOf(160.dp, minOf(fit, middleNow - Space.dialMargin))
+        // Other states keep the dial where it was while their content fits below it.
+        val dialTop = if (active) above else maxOf(0.dp, minOf(above, middleNow - target - Space.dialMargin / 2))
+        val minTop = maxOf(28.dp, step.toDp())
+        val statusMin = if (active) belowProbe.toDp() else 0.dp
+        val screen = subcompose("screen") {
+            val size by animateDpAsState(target, tween(250), label = "dialSize")
             Column(
-                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = Space.margin),
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+                    .padding(horizontal = Space.margin),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Box(
-                    Modifier.padding(top = 8.dp).heightIn(min = maxOf(28.dp, with(density) { stepHeight.toDp() }))
-                        .onSizeChanged { topHeight = it.height },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Probe({ stepHeight = it }) { StepIndicator(Step.SETTLE) }
+                Box(Modifier.padding(top = Space.titleToSteps).heightIn(min = minTop), contentAlignment = Alignment.Center) {
                     Top(state)
                 }
-                HeartDial(liveState.dial, size, Modifier.padding(top = Space.stepsToDial), pulse = state.pulse,
+                HeartDial(liveState.dial, size, Modifier.padding(top = dialTop), pulse = state.pulse,
                           description = dialDescription)
-                Box(Modifier.padding(top = gap).onSizeChanged { belowHeight = it.height }.padding(bottom = 16.dp)) {
-                    Probe({ belowProbe = it }) {
-                        Below(state.copy(phase = MainPhase.Settling(60, false)), actions)
-                        Below(state.copy(phase = MainPhase.Measuring(60, 60, false)), actions)
-                        Below(state.copy(phase = MainPhase.Settling(60, true)), actions)
-                        Below(state.copy(phase = MainPhase.Measuring(60, 60, true)), actions)
-                    }
-                    Below(state, actions)
+                Spacer(Modifier.weight(1f))
+                Box(Modifier.heightIn(min = statusMin), contentAlignment = Alignment.BottomCenter) { Below(state, actions) }
+                Box(Modifier.padding(top = Space.statusToKeys, bottom = Space.bottom), contentAlignment = Alignment.Center) {
+                    Keys(state, actions)
                 }
             }
-            Box(
-                Modifier.fillMaxWidth().onSizeChanged { keysHeight = it.height }.padding(top = 12.dp, bottom = Space.bottom),
-                contentAlignment = Alignment.Center,
-            ) {
-                Probe({ keysProbe = it }) {
-                    Keys(state.copy(phase = MainPhase.Connected("")), actions)
-                }
-                Keys(state, actions)
-            }
-        }
+        }.map { it.measure(c) }
+        layout(c.maxWidth, c.maxHeight) { screen.forEach { it.place(0, 0) } }
     }
-}
-
-/** Measures [content] (children stacked) at the available width without placing it: no space, not drawn, no semantics. */
-@Composable
-private fun Probe(onHeight: (Int) -> Unit, content: @Composable () -> Unit) {
-    Box(Modifier.clearAndSetSemantics {}.layout { m, c ->
-        onHeight(m.measure(c.copy(minWidth = 0, minHeight = 0, maxHeight = Constraints.Infinity)).height)
-        layout(0, 0) {}
-    }) { content() }
 }
 
 @Composable
