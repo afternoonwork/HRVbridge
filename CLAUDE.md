@@ -5,7 +5,7 @@ measurement from a Bluetooth chest strap and writes resting HR, rMSSD and SDNN
 to the user's Intervals.icu wellness record. It is a bridge, not an analysis
 tool: no charts, trends, baselines or readiness scores. Intervals.icu does that.
 
-Owner: Paul. Repo: afternoonwork/HRVbridge, **public** (since 20 Oct 2026),
+Owner: Paul. Repo: afternoonwork/SignON, **public** (since 20 Oct 2026),
 deliberately with **no licence**: do not add one. Android as signed APK on
 GitHub Releases first; Google Play and App Store later. Free, donation link
 outside the app.
