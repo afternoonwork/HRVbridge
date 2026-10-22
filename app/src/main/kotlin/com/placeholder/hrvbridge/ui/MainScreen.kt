@@ -275,7 +275,7 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
     // One layout pass: first the heights of everything but the dial, measured without placing
     // them, then the screen with the dial sized and placed from them.
     SubcomposeLayout(modifier.fillMaxSize().background(hrv.bg)) { c ->
-        val inner = Constraints(maxWidth = (c.maxWidth - (2 * Space.margin).roundToPx()).coerceAtLeast(0))
+        val inner = Constraints(maxWidth = (c.maxWidth - (Space.margin * 2).roundToPx()).coerceAtLeast(0))
         val full = Constraints(maxWidth = c.maxWidth)
         fun height(slot: String, cs: Constraints, content: @Composable () -> Unit) =
             subcompose(slot) { Box(Modifier.clearAndSetSemantics {}) { content() } }.maxOfOrNull { it.measure(cs).height } ?: 0
