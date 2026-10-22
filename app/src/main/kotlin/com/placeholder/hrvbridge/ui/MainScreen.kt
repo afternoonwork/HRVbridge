@@ -303,8 +303,8 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         val active = state.phase is MainPhase.Connected || state.isMeasuring
         val fit = maxOf(160.dp, minOf(dialSize(c.maxWidth.toDp()), maxHeight - running))
         // Spare height, from the reserved heights so the dial does not move between active states:
-        // 3/5 above the block, 2/5 between the block and the keys (keeps that gap small on tall phones).
-        val lift = maxOf(0.dp, maxHeight - running - fit) * 0.6f
+        // 2/3 above the block, 1/3 between the block and the keys (keeps that gap small on tall phones).
+        val lift = maxOf(0.dp, maxHeight - running - fit) * 2 / 3
         val target = if (active) fit else maxOf(160.dp, minOf(fit, maxHeight - current))
         // Terminal states keep the dial where it was while their content fits below it.
         val topLift = if (active) lift else maxOf(0.dp, minOf(lift, maxHeight - current - target))

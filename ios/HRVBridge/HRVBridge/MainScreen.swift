@@ -248,9 +248,9 @@ struct MainScreenView: View {
             let avail = geo.size.height - 8 - Space.stepsToDial - 8
             let fit = max(160, min(HeartDial.size(forWidth: geo.size.width), avail - running))
             // Spare height, from the reserved heights so the dial does not move between active
-            // states: 3/5 above the block, 2/5 between the block and the keys (keeps that gap
+            // states: 2/3 above the block, 1/3 between the block and the keys (keeps that gap
             // small on tall phones).
-            let lift = max(0, avail - running - fit) * 0.6
+            let lift = max(0, avail - running - fit) * 2 / 3
             let dialSize = active ? fit : max(160, min(fit, avail - current))
             // Terminal states keep the dial where it was while their content fits below it.
             let topLift = active ? lift : max(0, min(lift, avail - current - dialSize))
