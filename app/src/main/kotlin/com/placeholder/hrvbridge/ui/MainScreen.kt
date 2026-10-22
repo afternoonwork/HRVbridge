@@ -313,6 +313,7 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         // it follows the measured heights, which settle over the first layouts.
         val topLift = if (active) lift else maxOf(0.dp, minOf(lift, maxHeight - current - target))
         // Snap until the first measured layout, so opening the screen does not animate.
+        println("DIALDBG ${state.phase::class.simpleName} H=$maxHeight W=$maxWidth top=$topHeight step=$stepHeight bp=$belowProbe kp=$keysProbe bh=$belowHeight kh=$keysHeight running=$running fit=$fit lift=$lift ready=${measured[0]}")
         val size by animateDpAsState(target, if (measured[0]) tween(250) else snap(), label = "dialSize")
         val ready = topHeight > 0 && belowProbe > 0 && keysProbe > 0
         SideEffect { measured[0] = ready }
