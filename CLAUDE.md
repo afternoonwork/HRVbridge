@@ -30,7 +30,8 @@ outside the app.
   for the measurement: "sit still", never "lie still".
 - Name and IDs decided (Paul, 21 Oct 2026): "SignON" (exactly this
   casing), subtitle "Morning HRV and rHR". Android applicationId and iOS
-  bundle ID: `fyi.paulmuller.signon` (permanent on Google Play). The
+  bundle ID: `work.afternoon.signon` (Paul, 22 Oct 2026, before any users;
+  was `fyi.paulmuller.signon` up to 0.1.0-beta.2; permanent from now on). The
   Kotlin package/namespace `com.placeholder.hrvbridge`, the
   `HRVBridge`/`HRVCore` folder, target and module names, Keystore alias,
   Keychain service, file names and event uids are internal and stay.
@@ -283,7 +284,7 @@ Draft connect-screen copy:
 - Android developer verification: sideloaded apps need a verified
   developer from 2027 globally (30 Sep 2026 only in Brazil, Indonesia,
   Singapore, Thailand). Before then Paul verifies his identity and
-  registers `fyi.paulmuller.signon` with this key's certificate in the
+  registers `work.afternoon.signon` with this key's certificate in the
   Android Developer Console. Plan: `docs/android-release-plan.md`.
 
 ## Later destinations (not now)
@@ -389,7 +390,7 @@ Draft connect-screen copy:
     -derivedDataPath build/ios -allowProvisioningUpdates build
   xcrun devicectl device install app --device <Identifier> \
     build/ios/Build/Products/Debug-iphoneos/HRVBridge.app
-  xcrun devicectl device process launch --device <Identifier> fyi.paulmuller.signon
+  xcrun devicectl device process launch --device <Identifier> work.afternoon.signon
   ```
   The install expires after 7 days (free signing); rebuild and reinstall.
 - Rounding in Swift uses exact integer arithmetic for the second step

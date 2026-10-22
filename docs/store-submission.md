@@ -8,7 +8,7 @@ wording changes.
 ## Store listing (Paul, 21 Oct 2026)
 
 - App name: SignON (both stores).
-- Package ID (Play) and bundle ID (App Store): `fyi.paulmuller.signon`.
+- Package ID (Play) and bundle ID (App Store): `work.afternoon.signon`.
 - App Store subtitle (30 characters max): "Morning HRV and rHR".
 - Google Play short description (80 characters max): "Morning HRV and rHR".
 - Portrait only on both platforms. iOS is iPhone-only (runs on iPad in
@@ -147,7 +147,7 @@ Draft text for the App Review notes field:
 ## Paul's release checklist
 
 - Name and IDs are decided: SignON, Android package and iOS bundle ID
-  `fyi.paulmuller.signon`. Replace the free Personal Team (iOS) with the
+  `work.afternoon.signon`. Replace the free Personal Team (iOS) with the
   paid team before TestFlight.
 - Create the Android upload key (see CLAUDE.md, Android specifics).
 - Publish the privacy policy and use its URL in both stores.
