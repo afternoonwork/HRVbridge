@@ -306,14 +306,13 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         val active = state.phase is MainPhase.Connected || state.isMeasuring
         val fit = maxOf(160.dp, minOf(dialSize(maxWidth), maxHeight - running))
         // Spare height, from the reserved heights so the dial does not move between active states:
-        // half above the block, half between the block and the keys.
-        val lift = maxOf(0.dp, maxHeight - running - fit) / 2
+        // 3/5 above the block, 2/5 between the block and the keys (keeps that gap small on tall phones).
+        val lift = maxOf(0.dp, maxHeight - running - fit) * 0.6f
         val target = if (active) fit else maxOf(160.dp, minOf(fit, maxHeight - current))
         // Terminal states keep the dial where it was while their content fits below it. Not animated:
         // it follows the measured heights, which settle over the first layouts.
         val topLift = if (active) lift else maxOf(0.dp, minOf(lift, maxHeight - current - target))
         // Snap until the first measured layout, so opening the screen does not animate.
-        println("DIALDBG ${state.phase::class.simpleName} H=$maxHeight W=$maxWidth top=$topHeight step=$stepHeight bp=$belowProbe kp=$keysProbe bh=$belowHeight kh=$keysHeight running=$running fit=$fit lift=$lift ready=${measured[0]}")
         val size by animateDpAsState(target, if (measured[0]) tween(250) else snap(), label = "dialSize")
         val ready = topHeight > 0 && belowProbe > 0 && keysProbe > 0
         SideEffect { measured[0] = ready }

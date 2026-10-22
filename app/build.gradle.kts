@@ -62,7 +62,6 @@ android {
             it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED")
             // Assertion messages (expected and actual values) in the CI log.
             it.testLogging.exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-            it.testLogging.showStandardStreams = true // DIALDBG
         }
     }
 

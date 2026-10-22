@@ -48,7 +48,7 @@ class DialSizeTest {
                 }
             } }
         } })
-        shadowOf(Looper.getMainLooper()).idle()
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(1))
         fun all(n: SemanticsNode): List<SemanticsNode> = listOf(n) + n.children.flatMap(::all)
         val root = (view.getChildAt(0) as ViewRootForTest).semanticsOwner.unmergedRootSemanticsNode
         return all(root).single { it.config.getOrNull(SemanticsProperties.ContentDescription) == listOf("dial") }.boundsInRoot
