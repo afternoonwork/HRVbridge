@@ -245,14 +245,21 @@ struct MainScreenView: View {
                 if case .connected = state.phase { return true }
                 return state.isMeasuring
             }()
-            let spare = geo.size.height - 8 - Space.stepsToDial - (active ? running : max(running, current)) - 8
-            let dialSize = max(160, min(HeartDial.size(forWidth: geo.size.width), spare))
+            let avail = geo.size.height - 8 - Space.stepsToDial - 8
+            let fit = max(160, min(HeartDial.size(forWidth: geo.size.width), avail - running))
+            // Spare height, from the reserved heights so the dial does not move between active
+            // states: half above the block, half between the block and the keys.
+            let lift = max(0, avail - running - fit) / 2
+            let dialSize = active ? fit : max(160, min(fit, avail - current))
+            // Terminal states keep the dial where it was while their content fits below it.
+            let topLift = active ? lift : max(0, min(lift, avail - current - dialSize))
             ScrollView {
                 VStack(spacing: 0) {
                     top
                         .frame(minHeight: max(28, stepHeight))
                         .onGeometryChange(for: CGFloat.self, of: \.size.height) { topHeight = $0 }
-                        .padding(.top, 8)
+                        .padding(.top, 8 + topLift)
+                        .animation(animateDial ? .easeInOut(duration: 0.25) : nil, value: topLift)
                     dial
                         .frame(width: dialSize, height: dialSize)
                         .animation(animateDial ? .easeInOut(duration: 0.25) : nil, value: dialSize)

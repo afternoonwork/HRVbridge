@@ -112,12 +112,24 @@ class ScreenshotTest {
         }
     }
 
-    /** The small Android screen (720 x 1280 at 320 dpi): the dial keeps its size on Start. */
+    /** Three phone sizes: the dial keeps its size and place from Connected through measuring. */
+    private fun sizes(tag: String) {
+        for (name in listOf("connected", "settling", "poor-contact", "measuring", "result")) {
+            render("$name-$tag-light", false) { MainScreen(states.getValue(name)) }
+        }
+    }
+
     @Test
     @Config(qualifiers = "w360dp-h640dp-xhdpi")
-    fun smallScreen() {
-        for (name in listOf("connected", "settling", "poor-contact")) render("$name-360x640-light", false) { MainScreen(states.getValue(name)) }
-    }
+    fun smallScreen() = sizes("360x640")
+
+    @Test
+    @Config(qualifiers = "w411dp-h891dp-xxhdpi")
+    fun mediumScreen() = sizes("411x891")
+
+    @Test
+    @Config(qualifiers = "w448dp-h998dp-xxhdpi")
+    fun largeScreen() = sizes("448x998")
 
     @Composable
     private fun MainScreen(state: MainScreenState) {

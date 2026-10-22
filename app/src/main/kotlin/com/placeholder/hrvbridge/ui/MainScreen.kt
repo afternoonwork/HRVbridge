@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -49,6 +50,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.placeholder.hrvbridge.BeatPulse
 import com.placeholder.hrvbridge.FoundStrap
@@ -304,9 +306,17 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         val current = with(density) { (topHeight + belowHeight + keysHeight).toDp() } + fixed + gap
         // Active states (poor contact included) keep the reserved size; only terminal states may shrink it.
         val active = state.phase is MainPhase.Connected || state.isMeasuring
-        val target = maxOf(160.dp, minOf(dialSize(maxWidth), maxHeight - if (active) running else maxOf(running, current)))
+        val fit = maxOf(160.dp, minOf(dialSize(maxWidth), maxHeight - running))
+        // Spare height, from the reserved heights so the dial does not move between active states:
+        // half above the block, half between the block and the keys.
+        val lift = maxOf(0.dp, maxHeight - running - fit) / 2
+        val target = if (active) fit else maxOf(160.dp, minOf(fit, maxHeight - current))
+        // Terminal states keep the dial where it was while their content fits below it.
+        val targetLift = if (active) lift else maxOf(0.dp, minOf(lift, maxHeight - current - target))
         // Snap until the first measured layout, so opening the screen does not animate.
-        val size by animateDpAsState(target, if (measured[0]) tween(250) else snap(), label = "dialSize")
+        val spec: AnimationSpec<Dp> = if (measured[0]) tween(250) else snap()
+        val size by animateDpAsState(target, spec, label = "dialSize")
+        val topLift by animateDpAsState(targetLift, spec, label = "dialLift")
         val ready = topHeight > 0 && belowProbe > 0 && keysProbe > 0
         SideEffect { measured[0] = ready }
         Column(Modifier.fillMaxSize()) {
@@ -315,7 +325,7 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
-                    Modifier.padding(top = 8.dp).heightIn(min = maxOf(28.dp, with(density) { stepHeight.toDp() }))
+                    Modifier.padding(top = 8.dp + topLift).heightIn(min = maxOf(28.dp, with(density) { stepHeight.toDp() }))
                         .onSizeChanged { topHeight = it.height },
                     contentAlignment = Alignment.Center,
                 ) {
