@@ -50,7 +50,7 @@ Not blockers (checked):
 | 21 Oct | `gh auth refresh -h github.com -s workflow`, push PR #42's workflow commit, wait for CI (lint now runs on every push). | P, then A fixes lint |
 | 21 to 23 Oct | Review and merge #41 (icon), #42 (release), #40 (this plan). | P (reviewer agent comments) |
 | 21 to 23 Oct | Create the signing key once: `keytool -genkeypair -v -keystore ~/keys/signon-upload.jks -alias signon -keyalg RSA -keysize 4096 -validity 10000` | P |
-| same day | Store it as secrets (each command prompts, nothing in shell history): `base64 -i ~/keys/signon-upload.jks \| gh secret set HRVBRIDGE_KEYSTORE_BASE64 -R afternoonwork/HRVbridge`, then `gh secret set HRVBRIDGE_KEYSTORE_PASSWORD`, `HRVBRIDGE_KEY_ALIAS` (`signon`) and `HRVBRIDGE_KEY_PASSWORD`, each with `-R afternoonwork/HRVbridge`. | P |
+| same day | Store it as secrets (each command prompts, nothing in shell history): `base64 -i ~/keys/signon-upload.jks \| gh secret set HRVBRIDGE_KEYSTORE_BASE64 -R afternoonwork/SignON`, then `gh secret set HRVBRIDGE_KEYSTORE_PASSWORD`, `HRVBRIDGE_KEY_ALIAS` (`signon`) and `HRVBRIDGE_KEY_PASSWORD`, each with `-R afternoonwork/SignON`. | P |
 | same day | Back up the .jks and both passwords twice, offline, in two places. Losing the key means users can never update; there is no reset outside Play. | P |
 | by 24 Oct | Privacy policy final text: effective date, contact, URL of the file on GitHub. Done (docs/contact PR). | A |
 | by 24 Oct | `git tag v0.1.0-beta.1 && git push origin v0.1.0-beta.1`. Check the release page: APK, `.sha256`, certificate fingerprint in the notes. | P |

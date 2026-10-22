@@ -87,7 +87,7 @@ The app is not directed at children.
 ## Changes to this policy
 
 If this policy changes, the new version will be published at
-https://github.com/afternoonwork/HRVbridge/blob/main/docs/privacy-policy.md
+https://github.com/afternoonwork/SignON/blob/main/docs/privacy-policy.md
 with a
 new effective date.
 
