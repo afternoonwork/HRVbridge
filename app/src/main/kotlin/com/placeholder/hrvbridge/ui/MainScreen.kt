@@ -23,7 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -50,7 +49,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.placeholder.hrvbridge.BeatPulse
 import com.placeholder.hrvbridge.FoundStrap
@@ -311,12 +309,11 @@ fun MainScreenContent(state: MainScreenState, actions: MainActions, modifier: Mo
         // half above the block, half between the block and the keys.
         val lift = maxOf(0.dp, maxHeight - running - fit) / 2
         val target = if (active) fit else maxOf(160.dp, minOf(fit, maxHeight - current))
-        // Terminal states keep the dial where it was while their content fits below it.
-        val targetLift = if (active) lift else maxOf(0.dp, minOf(lift, maxHeight - current - target))
+        // Terminal states keep the dial where it was while their content fits below it. Not animated:
+        // it follows the measured heights, which settle over the first layouts.
+        val topLift = if (active) lift else maxOf(0.dp, minOf(lift, maxHeight - current - target))
         // Snap until the first measured layout, so opening the screen does not animate.
-        val spec: AnimationSpec<Dp> = if (measured[0]) tween(250) else snap()
-        val size by animateDpAsState(target, spec, label = "dialSize")
-        val topLift by animateDpAsState(targetLift, spec, label = "dialLift")
+        val size by animateDpAsState(target, if (measured[0]) tween(250) else snap(), label = "dialSize")
         val ready = topHeight > 0 && belowProbe > 0 && keysProbe > 0
         SideEffect { measured[0] = ready }
         Column(Modifier.fillMaxSize()) {
