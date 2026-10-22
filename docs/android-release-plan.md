@@ -1,7 +1,7 @@
 # SignON: Android release plan (APK on GitHub Releases)
 
 Written 21 Oct 2026 (day 0). App: SignON, applicationId
-`fyi.paulmuller.signon`, free, no ads, no in-app purchases, donation link
+`work.afternoon.signon`, free, no ads, no in-app purchases, donation link
 outside the app.
 
 ## Decision (Paul, 21 Oct 2026)
@@ -80,7 +80,7 @@ What to do, in 2027 or earlier once Android users exist:
 
 1. Create an Android Developer Console account (personal), verify
    identity. Expect a fee and the same ID checks as Play.
-2. Register the package `fyi.paulmuller.signon` and prove ownership with
+2. Register the package `work.afternoon.signon` and prove ownership with
    the signing key (same key as on GitHub Releases, so existing installs
    keep updating).
 3. Update this doc and `README.md` once the steps are known in detail.
@@ -112,7 +112,8 @@ What to do, in 2027 or earlier once Android users exist:
 | Version | Date | Notes |
 |---------|------|-------|
 | 0.1.0-beta.1 | 21 Oct 2026 | First signed APK. The first release run failed on the apksigner label "V2 Signer"; fixed in #44 and rerun via `workflow_dispatch`. |
-| 0.1.0-beta.2 | 22 Oct 2026 (planned) | Stable dial size, scaled heart rate window, centred titles, portrait only, darker window orange, bold question names, opt-in iOS screenshots in CI. |
+| 0.1.0-beta.2 | 22 Oct 2026 | Stable dial size, scaled heart rate window, centred titles, portrait only, darker window orange, bold question names, opt-in iOS screenshots in CI. |
+| 0.1.0-beta.3 | 22 Oct 2026 | New app ID `work.afternoon.signon` (was `fyi.paulmuller.signon`; beta.1/beta.2 must be uninstalled), dial grows with the phone in three zones, compact poor contact readout, repo now afternoonwork/SignON, contact pm(at)afternoon.work. |
 
 ## 5. Google Play later
 

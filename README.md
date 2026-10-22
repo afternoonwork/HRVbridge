@@ -34,6 +34,8 @@ Android 8.0 or newer, with Bluetooth.
    about an unknown app, choose to install anyway.
 4. Updates: install the newer APK over the old one. Your measurements and
    API key stay.
+   Had 0.1.0-beta.1 or beta.2? Those used an older app ID, so uninstall
+   them first and paste your API key again after installing.
 
 ## Beta
 
