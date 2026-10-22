@@ -52,9 +52,9 @@ Define these once per platform (an asset catalogue colour set or a `Theme` enum 
 
 **Shadows:** key = top highlight (white 90% light, 6% dark) + 0 3 8 black 12% (dark 55%); dial = same highlight + 0 6 18; window and fields = inset 0 1 3. Keep them subtle.
 
-**Sizes:** dial 264 on a 375 wide screen, min(264, width minus 112), at most 300; primary key height 56 (min width 200); secondary key 52 (min width 180); touch targets 44 pt / 48 dp; indicator dots 8.
+**Sizes:** dial 80% of the screen width (300 on a 375 wide screen) unless the height bounds it (see Dial size); the drawing geometry below is given for 264; primary key height 56 (min width 200); secondary key 52 (min width 180); touch targets 44 pt / 48 dp; indicator dots 8.
 
-**Dial size:** on short screens (iPhone SE, 360 x 640 dp) the height also bounds the dial. It keeps one size from Connected through settling and measuring, with or without poor contact: it is sized from the top slot (always the step indicator height, the strap row centred in it), the taller of the settling and measuring readouts (poor contact warning included) and the one-key area. Only terminal states (result and others) may shrink it, animated, and only if their content would not fit; they never grow it.
+**Dial size:** the height can also bound the dial (360 x 640 dp). It keeps one size from Connected through settling and measuring, with or without poor contact: it is sized from the top slot (always the step indicator height, the strap row centred in it), the taller of the settling and measuring readouts (poor contact warning included) and the one-key area. Only terminal states (result and others) may shrink it, animated, and only if their content would not fit; they never grow it. Placement (22 Oct 2026): the spare height, computed from those reserved heights so the dial does not move between active states, goes 2/3 above the block (top slot, dial, reserved readout) and 1/3 between the block and the key; terminal states keep that place while their content fits.
 
 **Android ColorScheme mapping:** primary = ink, onPrimary = bg, background = bg, surface = surface, onSurface = ink, onSurfaceVariant = ink-2, outlineVariant = line, outline = line-strong, tertiary = accent, error = platform default. No dynamic colour.
 
