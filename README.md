@@ -13,6 +13,11 @@ Settings, Developer Settings).
 
 SignON is not a medical device.
 
+<p>
+  <img src="docs/images/measuring.jpg" width="260" alt="SignON measuring: the dial sweeps through one minute while the heart rate window shows 52">
+  <img src="docs/images/result.jpg" width="260" alt="SignON result: resting heart rate 52, rMSSD 68.4 ms and SDNN 61.2 ms, ready to upload to Intervals.icu">
+</p>
+
 ## Install on Android
 
 Android 8.0 or newer, with Bluetooth.
