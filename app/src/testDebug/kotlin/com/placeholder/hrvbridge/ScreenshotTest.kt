@@ -161,8 +161,8 @@ class ScreenshotTest {
         activity.setContentView(ComposeView(activity).apply { setContent {
             HrvTheme(dark = dark) { CompositionLocalProvider(LocalStillSpinners provides true) { content() } }
         } })
-        // A second of frames (one per step), so layouts that depend on measured heights settle (spinners are still).
-        repeat(60) { shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(17)) }
+        // Layout and draw once; no clock advance, so spinners do not animate for ever.
+        shadowOf(Looper.getMainLooper()).idle()
         val view: View = activity.window.decorView
         val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bitmap))
